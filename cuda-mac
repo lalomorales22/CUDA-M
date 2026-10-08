@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Local CuMetal build, compilation, and numerical Apple-GPU verification."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import shlex
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timezone
+
+ROOT = Path(__file__).resolve().parent
+BUILD = ROOT / "build"
+OUT = ROOT / "local" / "out"
+
+
+def environment(trace=False):
+    # Keep user shell configuration untouched; remove diagnostic overrides only
+    # from this child process so an old CPU-emulation setting cannot pass a test.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CUMETAL_")}
+    env.update(CUMETAL_CACHE_DIR=str(OUT / "cache"),
+               CUMETAL_ENABLE_LLMC_CPU_EMULATION="0",
+               CUMETAL_DISABLE_LLMC_EMULATION="1",
+               CUMETAL_TOOL_XCRUN=str(ROOT / "local/toolchain/xcrun"))
+    env["PATH"] = str(ROOT / "local/toolchain") + os.pathsep + env.get("PATH", "")
+    if trace:
+        env["CUMETAL_TRACE_GPU"] = "1"
+    return env
+
+
+def run(args, log_name=None, trace=False):
+    args = [str(a) for a in args]
+    print("+ " + shlex.join(args), flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    log = (OUT / log_name).open("w") if log_name else None
+    lines = []
+    try:
+        with subprocess.Popen(args, cwd=ROOT, env=environment(trace),
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, errors="replace") as process:
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                lines.append(line)
+                if log:
+                    log.write(line)
+            code = process.wait()
+        if code:
+            raise RuntimeError(f"command exited {code}; see {OUT / log_name}" if log_name
+                               else f"command exited {code}: {shlex.join(args)}")
+        return "".join(lines)
+    finally:
+        if log:
+            log.close()
+
+
+def verify_trace(output, expected_kernels, marker):
+    if marker not in output.splitlines():
+        raise RuntimeError("missing numerical success marker")
+    launches = []
+    for line in output.splitlines():
+        if not line.startswith("CUMETAL_PROVENANCE "):
+            continue
+        fields = dict(token.split("=", 1) for token in shlex.split(line)[1:]
+                      if "=" in token)
+        if fields.get("event") != "kernel_launch":
+            continue
+        if fields.get("device") != "apple_gpu" or fields.get("launch_success") != "true":
+            raise RuntimeError("a kernel did not complete on the Apple GPU")
+        if fields.get("semantic_quality") != "exact":
+            raise RuntimeError("an approximate or unclassified kernel was reported")
+        if not fields.get("device_name", "").startswith("Apple "):
+            raise RuntimeError("missing Apple device identity")
+        launches.append(fields)
+    if len(launches) != sum(expected_kernels.values()):
+        raise RuntimeError("unexpected or missing GPU launches")
+    for name, count in expected_kernels.items():
+        if sum(name in event.get("kernel", "") for event in launches) != count:
+            raise RuntimeError(f"missing expected GPU work: {name} x {count}")
+    return launches
+
+
+def build():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        raise RuntimeError("this build requires native Apple Silicon macOS")
+    for tool in ("cmake", "ninja", "xcrun"):
+        if not shutil.which(tool):
+            raise RuntimeError(f"missing build dependency: {tool}")
+    # The Metal launcher can exist while its separately installed compiler is absent.
+    run(["xcrun", "metal", "--version"])
+    run(["xcrun", "--find", "metallib"])
+    llvm_dir = Path(os.environ.get("LLVM_DIR", "/opt/homebrew/opt/llvm/lib/cmake/llvm"))
+    if not (llvm_dir / "LLVMConfig.cmake").is_file():
+        raise RuntimeError("LLVM development package missing; set LLVM_DIR to its CMake directory")
+    support = ROOT / "third_party/VF64-metal/Sources/VF64Metal/Shaders/Interop/VF64Support.metal"
+    if not support.is_file():
+        run(["git", "submodule", "update", "--init", "--depth", "1", "third_party/VF64-metal"])
+    configured = run(["cmake", "-S", ROOT, "-B", BUILD, "-G", "Ninja",
+                      "-DCMAKE_BUILD_TYPE=Release", "-DCUMETAL_ENABLE_BINARY_SHIM=OFF",
+                      f"-DLLVM_DIR={llvm_dir}"], "configure.log")
+    if "CuMetal NVVM importer enabled" not in configured:
+        raise RuntimeError("configuration did not enable genuine CUDA/NVVM compilation")
+    run(["cmake", "--build", BUILD, "--target", "cumetalc", "cumetal_runtime",
+         "cumetal", "cumetal_ptxas_shim", "cumetal_fatbinary_shim", "-j2"], "build.log")
+
+
+def compiler():
+    path = BUILD / "cumetalc"
+    if not path.is_file():
+        raise RuntimeError("compiler missing; run ./cuda-mac build first")
+    return path
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def test():
+    compiler()
+    OUT.mkdir(parents=True, exist_ok=True)
+    report = {"status": "running", "started_utc": datetime.now(timezone.utc).isoformat(),
+              "macos": platform.mac_ver()[0], "architecture": platform.machine(),
+              "upstream_commit": json.loads((ROOT / "local/upstream.json").read_text())["commit"],
+              "checkout_commit": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+              "cases": [], "scope": "selected FP32 kernels; no general CUDA compatibility claim"}
+    report_path = OUT / "results.json"
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
+    cases = [
+        ("vectorAdd", ROOT / "samples/vectorAdd/vectorAdd.cu", {"vector_add": 1},
+         "PASS: samples/vectorAdd produced correct output for 16384 elements"),
+        ("apple_silicon_smoke", ROOT / "local/apple_silicon_smoke.cu",
+         {"smoke_saxpy": 3, "smoke_matmul": 1, "smoke_block_reduce": 1}, "ALL CHECKS PASSED")]
+    try:
+        run([BUILD / "cumetal", "doctor"], "doctor.log")
+        for name, source, kernels, marker in cases:
+            binary = OUT / name
+            run([compiler(), source, "-o", binary], name + "-compile.log")
+            output = run([binary], name + "-run.log", trace=True)
+            launches = verify_trace(output, kernels, marker)
+            report["cases"].append({"name": name, "status": "passed",
+                                     "source_sha256": sha256(source),
+                                     "binary_sha256": sha256(binary), "launches": launches})
+        report["runtime_sha256"] = sha256(BUILD / "libcumetal.dylib")
+        report["status"] = "passed"
+    except Exception as error:
+        report.update(status="failed", error=str(error))
+        raise
+    finally:
+        report["finished_utc"] = datetime.now(timezone.utc).isoformat()
+        report_path.write_text(json.dumps(report, indent=2) + "\n")
+    print(f"\nVERIFIED: numerical checks and 6 completed Apple-GPU launches.\nReport: {report_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    for name in ("build", "doctor", "test"):
+        commands.add_parser(name)
+    compile_parser = commands.add_parser("compile", help="compile supported CUDA C++")
+    compile_parser.add_argument("source", type=Path)
+    compile_parser.add_argument("-o", "--output", type=Path, required=True)
+    args = parser.parse_args()
+    if args.command == "build":
+        build()
+    elif args.command == "test":
+        test()
+    elif args.command == "doctor":
+        run([BUILD / "cumetal", "doctor"])
+    else:
+        source, output = args.source.resolve(), args.output.resolve()
+        if not source.is_file():
+            raise RuntimeError(f"source file missing: {source}")
+        if source == output:
+            raise RuntimeError("output must differ from the source file")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        run([compiler(), source, "-o", output])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        sys.exit(1)

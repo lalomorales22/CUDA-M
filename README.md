@@ -1,108 +1,147 @@
-# CuMetal
+# CUDA-M
 
-CuMetal is a CUDA compiler and runtime for Apple Silicon. It compiles supported
-CUDA C++ and PTX into Metal kernels, so you can run existing CUDA code on your
-Mac’s GPU without rewriting it in Metal.
+<p align="center">
+  <img src="assets/readme/cuda-m-banner.png" alt="CUDA-M — CUDA to Metal, with a metallic M processor and glowing circuit paths" width="1100">
+</p>
 
-The project is experimental and supports a tested subset of CUDA and its
-libraries. See [verified results](docs/verified-results.md) for what runs today
-and [known gaps](docs/known-gaps.md) for the remaining limits.
+<p align="center">
+  <strong>Run supported CUDA kernels on Apple Silicon.</strong><br>
+  Experimental CUDA-to-Metal compatibility, built on CuMetal.
+</p>
 
-## Install
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#verified-on-an-m1">M1 results</a> ·
+  <a href="local/EVIDENCE.md">REA evidence</a> ·
+  <a href="docs/known-gaps.md">Known limits</a>
+</p>
 
-Requires Apple Silicon and macOS 14 or newer. See the
-[installation guide](docs/build.md) for compiler and Apple toolchain requirements.
+CUDA-M brings together the [CuMetal compiler and runtime](https://github.com/Lulzx/cuda-metal),
+a local build runner, Metal toolchain discovery, and independent GPU correctness
+checks. Write ordinary CUDA C++, compile it into Metal, and run supported kernels
+on your Mac's GPU.
+
+**Verified on Apple M1:** six GPU launches passed numerical checks, including
+matrix multiplication and shared-memory reduction. REA captured CUDA launch
+calls reaching Apple's Metal compute driver. See the
+[dated verification report](local/EVIDENCE.md) for scope and evidence.
+
+## Quick start
+
+Requires Apple Silicon, macOS 14+, Xcode with Apple's Metal tools, Python 3.8+,
+CMake, Ninja, LLVM, LZ4, and Zstd. The local build defaults to Homebrew LLVM.
 
 ```bash
-brew install lulzx/tap/cumetal
-cumetal doctor
+git clone --recurse-submodules https://github.com/lalomorales22/CUDA-M.git
+cd CUDA-M
+
+./cuda-mac build
+./cuda-mac test
 ```
 
-Compile and run your CUDA source:
+On a machine missing the build dependencies:
 
 ```bash
-cumetalc kernel.cu -o kernel
-./kernel
+brew install cmake ninja llvm lz4 zstd python
+xcodebuild -downloadComponent MetalToolchain
 ```
 
-## Build from source
+See the [setup guide](local/README.md) for the Xcode launcher workaround verified
+on this Mac and alternate LLVM configuration. The build uses two jobs and keeps
+the compiler and runtime inside the checkout.
 
-From a checkout with the [build prerequisites](docs/build.md) installed:
+## Your first CUDA program
+
+The included example has CUDA memory calls, a `__global__` kernel, and an ordinary
+`<<<blocks, threads>>>` launch.
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j"$(sysctl -n hw.ncpu)"
-
-build/cumetalc samples/vectorAdd/vectorAdd.cu -o vectorAdd
-./vectorAdd
+./cuda-mac compile samples/vectorAdd/vectorAdd.cu -o local/out/vector-add
+CUMETAL_TRACE_GPU=1 ./local/out/vector-add
 ```
 
-See [demos](docs/demos.md) for larger workloads and [testing](docs/testing.md)
-for validation commands.
-The [LAMMPS/Kokkos GPU demo](demos/lammps/README.md) compiles unmodified LAMMPS
-and passes the stock 32,000-atom, 100-step full/half-neighbour numerical gate.
-
-## How it works
+Expected numerical result:
 
 ```text
-CUDA C++ / PTX → CuMetal compiler → Metal Shading Language → Apple tools → metallib
+PASS: samples/vectorAdd produced correct output for 16384 elements
 ```
 
-Source recompilation is the primary path. Direct CUDA C++ compilation uses
-typed CuMetal IR and embeds the compiled Metal library in the executable,
-with no first-launch PTX JIT. CuMetal uses no private Apple APIs.
-PTX import resolves each definition and branch/loop argument from its reaching
-SSA values, with checked result and edge types; supported register reuse does not
-inherit the type of a later assignment. PTX memory addresses use byte pointers
-in their actual storage address space; the final Metal dereference uses the
-resolved value type. Metal IR rejects unresolved nested pointer address spaces.
-Before pointer lowering, bounded SSA analysis can cancel a common address base
-from 64-bit arithmetic, including loop-carried cursors, and retain the resulting
-wrapping scalar count. It never materializes a Metal pointer as an integer.
-Aligned private-address ORs become byte offsets only when actual allocation
-alignment and reaching values prove every selected bit is zero. Local pointer
-fields admitted to reaching-store validation use bounded guard/range and
-initialized-prefix proofs to exclude intervening disjoint writes; missing
-initialization and possible overlaps reject within that proof. Escaped-cell
-discovery still has a separate validation gap documented below.
-Address-demand discovery expands only joins reached from memory uses, retaining
-every demanded incoming edge within the same work limit. Range proofs can use
-excluded comparison endpoints, bounded related offsets and necessary Boolean
-conditions, including pointer iterators with a literal end length or a selected
-zero stop marker. Unproved writes remain barriers to pointer recovery.
-See [the proof-scaling validation](docs/ptx-memory-proof-scaling-validation.md)
-for numerical checks, remaining full-input blockers and proof limits.
-Scalar conversions retain both their instruction format and wider
-declared register storage, including the required destination extension.
-Before register SSA, scalar zero-marker facts can prove that an absent payload
-is bypassed. Edge clones also discard a known unselected scalar-select arm while
-preserving observable operations; overwritten or unknown guards retain strict
-definedness checks.
-A single-use 64-bit pack followed by unsigned 16/32-bit narrowing can discard
-its unobserved high half when declared widths and an unchanged low source prove
-the replacement. Other uses retain their original definedness requirements.
-See [known gaps](docs/known-gaps.md) for memory-provenance and legacy-backend
-limits, and
-[compiler architecture](docs/compiler-architecture.md) for backend details.
+The trace also identifies the Apple GPU and successful kernel completion.
+For another source file, use `./cuda-mac compile your-file.cu -o your-program`.
+Keep the checkout in place: compiled programs link to its local runtime.
 
-## Limits
+## Verified on an M1
 
-- CUDA and library APIs are tested subsets, not drop-in replacements.
-- SASS execution is unsupported. The optional binary shim is
-  disabled in Release builds unless explicitly enabled.
-- SIMD/warp width is fixed at 32. Multi-GPU, peer access, and graphics-API
-  interop are unsupported.
-- FP64 uses emulation with mode-dependent precision; it is not native Metal FP64.
-- Cooperative grids, dynamic launch, graphs, and textures have bounded or
-  incomplete support. See [known gaps](docs/known-gaps.md) for exact limits.
+| CUDA workload | Checked locally |
+| --- | --- |
+| Vector addition | Every one of 16,384 outputs |
+| SAXPY | Sizes 1, 257, and 100,003; partial thread blocks |
+| Matrix multiplication | 37×29 times 29×41; all 1,517 outputs; 2D blocks |
+| Shared-memory reduction | 100,003 inputs; 391 GPU block sums; barriers |
+| Output boundaries | 512 untouched tail values after each independent case |
 
-## Documentation
+The runner requires both correct numerical output and completed Apple-GPU trace
+records. It rejects missing work, failed launches, approximate results, and CPU
+execution. The reduction's final accumulation runs on the CPU after every GPU
+block sum is checked.
 
-- [Status](docs/status.md) and [verified results](docs/verified-results.md)
-- [Roadmap](docs/spec-closure-roadmap.md) and [specification](spec.md)
-- [Matmul performance study](docs/matmul-performance.md) and [compiler timing and optimization](docs/compiler-performance.md)
-- [All documentation](docs/README.md)
+- [Complete CUDA test source](local/apple_silicon_smoke.cu)
+- [Committed numerical results](local/verification/2026-10-08/results.json)
+- [REA observations and limitations](local/EVIDENCE.md)
+- [Portable REA evidence summary](local/verification/2026-10-08/rea-summary.json)
 
-## License
+These checks establish the selected kernels' correctness. They are not a
+performance benchmark or the full upstream conformance suite. M4 execution has
+not been verified by this project.
 
-[Apache 2.0](LICENSE) · [Legal notice](docs/legal-notice.md)
+## How it runs
+
+```mermaid
+flowchart LR
+    A["CUDA C++ source"] --> B["CuMetal compiler"]
+    B --> C["Metal Shading Language"]
+    C --> D["Apple Metal compiler"]
+    D --> E["Apple GPU"]
+```
+
+CuMetal provides the compiler and CUDA-facing runtime. CUDA-M adds the local
+workflow, toolchain wrapper, independent validation fixture, and recorded M1
+evidence. The runtime and compiler source are unchanged from the pinned upstream
+revision.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `./cuda-mac build` | Build the local compiler, runtime, and helpers |
+| `./cuda-mac doctor` | Check dependency discovery |
+| `./cuda-mac test` | Compile and numerically validate six GPU launches |
+| `./cuda-mac compile input.cu -o output` | Compile supported CUDA source |
+| `python3 local/test_trace_validation.py` | Check rejection of misleading GPU evidence |
+
+Generated executables, caches, and raw machine-specific logs stay in ignored
+build/output folders. A small dated verification snapshot is included in Git.
+
+## Compatibility boundaries
+
+This is an experimental source-compilation workflow. Arbitrary CUDA applications,
+PyTorch's CUDA backend, NVIDIA SASS binaries, tensor-core instructions, and
+complete CUDA library compatibility are outside the verified scope. Some upstream
+library paths use the CPU. Apple GPUs do not provide native NVIDIA FP64 semantics.
+
+Read the [upstream known gaps](docs/known-gaps.md) before choosing a workload.
+The optional binary compatibility alias is disabled in this Release build.
+
+## Credit and license
+
+The compiler/runtime foundation is **[CuMetal by Lulzx and its contributors](https://github.com/Lulzx/cuda-metal)**.
+This repository preserves its Git history and [Apache-2.0 license](LICENSE).
+CuMetal revision: `fdf403ebdd14a57565fd167d675e2a9910a72c35` (0.6.0).
+
+The [original upstream README](UPSTREAM_README.md), [specification](spec.md),
+and [documentation](docs/README.md) remain available. Upstream functionality and
+upstream benchmark claims should be read with their original scope.
+
+The custom banner was made with the built-in image generation tool;
+[artwork details and exact prompt](assets/readme/GENERATED.md) are included.
+CUDA-M is an independent project and is not affiliated with NVIDIA or Apple.

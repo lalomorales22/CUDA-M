@@ -1,0 +1,251 @@
+{
+  "description": "Selected fields from local REA exports. This is a derived summary, not a canonical Evidence bundle. User-specific filesystem paths are omitted.",
+  "static": {
+    "evidence_id": "ev_e79dbaaf5fa76c82cf1ad17118d5f4dcc3da738b9f8ae7f00ca026ea71bdb82e",
+    "operation": "inspect_macho",
+    "subject_sha256": "6907fa27cf6b2957c44bcf42c220786d012fdef49b7a431207e8f7e74eaba08f",
+    "architectures": {
+      "exhaustive": true,
+      "items": [
+        {
+          "alignment": null,
+          "cpu_subtype": null,
+          "cpu_type": null,
+          "file_offset": null,
+          "name": "arm64",
+          "size": null
+        }
+      ],
+      "limitations": [],
+      "total": 1
+    },
+    "cuda_exports": [
+      "_cudaDeviceSynchronize",
+      "_cudaLaunchKernel",
+      "_cudaMalloc",
+      "_cudaMemcpy"
+    ],
+    "metal_dependencies": [
+      "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+      "/System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/MetalPerformanceShaders"
+    ],
+    "limitations": [
+      "Imports and exports combine dyld_info and nm; stripped or toolchain-hidden symbols may be absent.",
+      "vtool output is retained as provenance but only otool build metadata is normalized."
+    ]
+  },
+  "runtime": {
+    "evidence_id": "ev_c344be2b39f8f7d7873893f6ab0190699d6cd28d8f5a11f2ebdd9b69ffb5dfdf",
+    "operation": "observe_native_calls",
+    "subject_sha256": "a3540653452d8e6b74eb9c275a9d38501cdf49f1a92347919781e635a5fa2e33",
+    "process_outcome": "exited",
+    "exit_status": 0,
+    "stdout": "DEVICE: Apple M1; warp=32; max threads/block=1024; shared bytes/block=32768\nCHECKS: signed dyadic inputs; exact finite CPU references; guarded output tails\nPASS: saxpy n=1, every output and 512 tail canaries\nPASS: saxpy n=257, every output and 512 tail canaries\nPASS: saxpy n=100003, every output and 512 tail canaries\nPASS: matmul 37x29 * 29x41, all 1517 outputs, 2D blocks and tail canaries\nPASS: reduction n=100003, all 391 GPU block partials, CPU final sum=-15.75000000, tail canaries\nALL CHECKS PASSED\n",
+    "stderr": "CUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M1\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=5874 grid=(1,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M1\" math_mode=precompiled compile_cache_hit=true launch_success=true duration_ns=6083 grid=(2,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M1\" math_mode=precompiled compile_cache_hit=true launch_success=true duration_ns=30124 grid=(391,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z12smoke_matmulPKfS0_Pfiii\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M1\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=13749 grid=(3,3,1) block=(16,16,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z18smoke_block_reducePKfPfi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M1\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=20541 grid=(391,1,1) block=(256,1,1) unsupported_reason=\"\"\n",
+    "recorded_events": [
+      {
+        "sequence": 0,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 1,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 2,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 3,
+        "symbol": "-[AGXG13GFamilyComputeContext dispatchThreadgroups:threadsPerThreadgroup:]",
+        "module": "AGXMetal13_3",
+        "backtrace": [
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cumetal::metal_backend::launch_kernel(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, cumetal::metal_backend::LaunchConfig const&, std::__1::vector<cumetal::metal_backend::KernelArg, std::__1::allocator<cumetal::metal_backend::KernelArg>> const&, std::__1::shared_ptr<cumetal::metal_backend::Stream> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*)"
+          },
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cudaLaunchKernel"
+          },
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cudaLaunch"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "__device_stub__smoke_saxpy(float const*, float const*, float*, float, int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          }
+        ]
+      },
+      {
+        "sequence": 4,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 5,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 6,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      },
+      {
+        "sequence": 7,
+        "symbol": "-[AGXG13GFamilyComputeContext dispatchThreadgroups:threadsPerThreadgroup:]",
+        "module": "AGXMetal13_3",
+        "backtrace": [
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cumetal::metal_backend::launch_kernel(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, cumetal::metal_backend::LaunchConfig const&, std::__1::vector<cumetal::metal_backend::KernelArg, std::__1::allocator<cumetal::metal_backend::KernelArg>> const&, std::__1::shared_ptr<cumetal::metal_backend::Stream> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*)"
+          },
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cudaLaunchKernel"
+          },
+          {
+            "module": "libcumetal.dylib",
+            "symbol": "cudaLaunch"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "__device_stub__smoke_saxpy(float const*, float const*, float*, float, int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          }
+        ]
+      },
+      {
+        "sequence": 8,
+        "symbol": "cudaMalloc",
+        "module": "libcumetal.dylib",
+        "backtrace": [
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "(anonymous namespace)::run_saxpy(int)"
+          },
+          {
+            "module": "apple_silicon_smoke",
+            "symbol": "main"
+          },
+          {
+            "module": "dyld",
+            "symbol": "start"
+          }
+        ]
+      }
+    ],
+    "coverage": {
+      "event_limit_reached": false,
+      "resource_limit_reached": false,
+      "status": "complete",
+      "unresolved_breakpoints": []
+    },
+    "limitations": [
+      "Only entries are observed; return values, floating-point and stack-passed arguments are not captured.",
+      "Registers are the raw integer argument registers at entry. For Objective-C methods the first two hold the receiver and the selector.",
+      "Receiver classes come from LLDB's Objective-C runtime reader without running target code; they are null for class methods and for receivers LLDB cannot classify.",
+      "Calls that never reach a symbol's entry, such as inlined code or objc_direct methods called directly, are not observed.",
+      "The target is launched directly under LLDB, not through LaunchServices; LLDB disables ASLR for it, so load addresses can equal file addresses.",
+      "The observation window is checked about once a second, and recording pauses the process at every entry, which slows it.",
+      "The selected pathname digest and LLDB module identity are checked around launch. No immutable executable snapshot is used; concurrent in-place mutation or replacement and restoration cannot be ruled out, so the loaded-image digest remains unknown."
+    ],
+    "count_limitation": "Nine recorded entries include seven allocations and two Metal dispatches. The executable reported five completed kernel launches; the debugger entry list is not an exhaustive call count."
+  }
+}

@@ -1,0 +1,108 @@
+# CuMetal
+
+CuMetal is a CUDA compiler and runtime for Apple Silicon. It compiles supported
+CUDA C++ and PTX into Metal kernels, so you can run existing CUDA code on your
+Mac’s GPU without rewriting it in Metal.
+
+The project is experimental and supports a tested subset of CUDA and its
+libraries. See [verified results](docs/verified-results.md) for what runs today
+and [known gaps](docs/known-gaps.md) for the remaining limits.
+
+## Install
+
+Requires Apple Silicon and macOS 14 or newer. See the
+[installation guide](docs/build.md) for compiler and Apple toolchain requirements.
+
+```bash
+brew install lulzx/tap/cumetal
+cumetal doctor
+```
+
+Compile and run your CUDA source:
+
+```bash
+cumetalc kernel.cu -o kernel
+./kernel
+```
+
+## Build from source
+
+From a checkout with the [build prerequisites](docs/build.md) installed:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(sysctl -n hw.ncpu)"
+
+build/cumetalc samples/vectorAdd/vectorAdd.cu -o vectorAdd
+./vectorAdd
+```
+
+See [demos](docs/demos.md) for larger workloads and [testing](docs/testing.md)
+for validation commands.
+The [LAMMPS/Kokkos GPU demo](demos/lammps/README.md) compiles unmodified LAMMPS
+and passes the stock 32,000-atom, 100-step full/half-neighbour numerical gate.
+
+## How it works
+
+```text
+CUDA C++ / PTX → CuMetal compiler → Metal Shading Language → Apple tools → metallib
+```
+
+Source recompilation is the primary path. Direct CUDA C++ compilation uses
+typed CuMetal IR and embeds the compiled Metal library in the executable,
+with no first-launch PTX JIT. CuMetal uses no private Apple APIs.
+PTX import resolves each definition and branch/loop argument from its reaching
+SSA values, with checked result and edge types; supported register reuse does not
+inherit the type of a later assignment. PTX memory addresses use byte pointers
+in their actual storage address space; the final Metal dereference uses the
+resolved value type. Metal IR rejects unresolved nested pointer address spaces.
+Before pointer lowering, bounded SSA analysis can cancel a common address base
+from 64-bit arithmetic, including loop-carried cursors, and retain the resulting
+wrapping scalar count. It never materializes a Metal pointer as an integer.
+Aligned private-address ORs become byte offsets only when actual allocation
+alignment and reaching values prove every selected bit is zero. Local pointer
+fields admitted to reaching-store validation use bounded guard/range and
+initialized-prefix proofs to exclude intervening disjoint writes; missing
+initialization and possible overlaps reject within that proof. Escaped-cell
+discovery still has a separate validation gap documented below.
+Address-demand discovery expands only joins reached from memory uses, retaining
+every demanded incoming edge within the same work limit. Range proofs can use
+excluded comparison endpoints, bounded related offsets and necessary Boolean
+conditions, including pointer iterators with a literal end length or a selected
+zero stop marker. Unproved writes remain barriers to pointer recovery.
+See [the proof-scaling validation](docs/ptx-memory-proof-scaling-validation.md)
+for numerical checks, remaining full-input blockers and proof limits.
+Scalar conversions retain both their instruction format and wider
+declared register storage, including the required destination extension.
+Before register SSA, scalar zero-marker facts can prove that an absent payload
+is bypassed. Edge clones also discard a known unselected scalar-select arm while
+preserving observable operations; overwritten or unknown guards retain strict
+definedness checks.
+A single-use 64-bit pack followed by unsigned 16/32-bit narrowing can discard
+its unobserved high half when declared widths and an unchanged low source prove
+the replacement. Other uses retain their original definedness requirements.
+See [known gaps](docs/known-gaps.md) for memory-provenance and legacy-backend
+limits, and
+[compiler architecture](docs/compiler-architecture.md) for backend details.
+
+## Limits
+
+- CUDA and library APIs are tested subsets, not drop-in replacements.
+- SASS execution is unsupported. The optional binary shim is
+  disabled in Release builds unless explicitly enabled.
+- SIMD/warp width is fixed at 32. Multi-GPU, peer access, and graphics-API
+  interop are unsupported.
+- FP64 uses emulation with mode-dependent precision; it is not native Metal FP64.
+- Cooperative grids, dynamic launch, graphs, and textures have bounded or
+  incomplete support. See [known gaps](docs/known-gaps.md) for exact limits.
+
+## Documentation
+
+- [Status](docs/status.md) and [verified results](docs/verified-results.md)
+- [Roadmap](docs/spec-closure-roadmap.md) and [specification](spec.md)
+- [Matmul performance study](docs/matmul-performance.md) and [compiler timing and optimization](docs/compiler-performance.md)
+- [All documentation](docs/README.md)
+
+## License
+
+[Apache 2.0](LICENSE) · [Legal notice](docs/legal-notice.md)

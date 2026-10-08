@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Route Metal tools to Apple's installed component when Xcode's launcher fails.
+
+Other Xcode tools are always resolved by the real /usr/bin/xcrun. This changes
+only processes launched by ./cuda-mac; it does not change Xcode or shell config.
+"""
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def metal_bin():
+    override = os.environ.get("CUDA_MAC_METAL_BIN")
+    if override:
+        candidates = [Path(override)]
+    else:
+        found = subprocess.run(["/usr/bin/xcrun", "--find", "metallib"],
+                               capture_output=True, text=True)
+        candidates = [Path(found.stdout.strip()).parent] if found.returncode == 0 else []
+        if not candidates:
+            candidates = sorted(Path("/var/run/com.apple.security.cryptexd/mnt").glob(
+                "com.apple.MobileAsset.MetalToolchain-*/Metal.xctoolchain/usr/bin"))
+    candidates = [p for p in candidates
+                  if (p / "metal").is_file() and (p / "metallib").is_file()]
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        raise RuntimeError("multiple Metal components; set CUDA_MAC_METAL_BIN to the intended usr/bin")
+    return None
+
+
+def main():
+    args = sys.argv[1:]
+    query = len(args) == 2 and args[0] in ("--find", "-f")
+    tool = args[1] if query else args[0] if args else ""
+    if tool in ("metal", "metallib"):
+        directory = metal_bin()
+        if directory:
+            executable = str(directory / tool)
+            if query:
+                print(executable)
+                return
+            os.execv(executable, [executable, *args[1:]])
+    os.execv("/usr/bin/xcrun", ["/usr/bin/xcrun", *args])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, RuntimeError) as error:
+        print(f"CUDA Mac toolchain: {error}", file=sys.stderr)
+        sys.exit(1)

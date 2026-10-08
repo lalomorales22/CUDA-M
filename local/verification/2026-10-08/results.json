@@ -1,0 +1,124 @@
+{
+  "status": "passed",
+  "started_utc": "2026-10-08T19:53:20.431107+00:00",
+  "macos": "26.4.1",
+  "architecture": "arm64",
+  "upstream_commit": "fdf403ebdd14a57565fd167d675e2a9910a72c35",
+  "cases": [
+    {
+      "name": "vectorAdd",
+      "status": "passed",
+      "source_sha256": "8ffb07ce4978e40f9cb3428fec0bec15a5a843f9f76a7358e8a4fd694404fe54",
+      "binary_sha256": "9be5792d33dceb3440130597144f575fa5451b14cf41d83c74607547a3c8983f",
+      "launches": [
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z10vector_addPKfS0_Pfi",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "false",
+          "launch_success": "true",
+          "duration_ns": "8999",
+          "grid": "(64,1,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        }
+      ]
+    },
+    {
+      "name": "apple_silicon_smoke",
+      "status": "passed",
+      "source_sha256": "39e6acaee0658f8e1c7d426c091b9d8b26cbff6740a442abdb448dffe8a723bb",
+      "binary_sha256": "a3540653452d8e6b74eb9c275a9d38501cdf49f1a92347919781e635a5fa2e33",
+      "launches": [
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z11smoke_saxpyPKfS0_Pffi",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "false",
+          "launch_success": "true",
+          "duration_ns": "107500",
+          "grid": "(1,1,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z11smoke_saxpyPKfS0_Pffi",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "true",
+          "launch_success": "true",
+          "duration_ns": "4291",
+          "grid": "(2,1,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z11smoke_saxpyPKfS0_Pffi",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "true",
+          "launch_success": "true",
+          "duration_ns": "31416",
+          "grid": "(391,1,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z12smoke_matmulPKfS0_Pfiii",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "false",
+          "launch_success": "true",
+          "duration_ns": "15416",
+          "grid": "(3,3,1)",
+          "block": "(16,16,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "_Z18smoke_block_reducePKfPfi",
+          "source": "generic_nvvm",
+          "provenance": "generic_nvvm_lowering",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M1",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "false",
+          "launch_success": "true",
+          "duration_ns": "20999",
+          "grid": "(391,1,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        }
+      ]
+    }
+  ],
+  "scope": "selected FP32 kernels; no general CUDA compatibility claim",
+  "runtime_sha256": "6907fa27cf6b2957c44bcf42c220786d012fdef49b7a431207e8f7e74eaba08f",
+  "finished_utc": "2026-10-08T19:53:27.139880+00:00"
+}
