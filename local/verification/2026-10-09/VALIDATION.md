@@ -3,6 +3,32 @@
 Date: 2026-10-09. Apple M4 Mac mini, 32 GiB, macOS 27.0.
 Release build, LLVM 22.1.7, Metal compiler 32023.921, binary shim OFF.
 
+## Compatibility hardening follow-up
+
+The follow-up fixes direct NVVM 32-bit system atomics, unsigned system min/max
+old-value behavior, and LLVM 22 floating-limit header ordering. New focused
+tests cover all eight mapped atomic operations, rejected widths/scopes and
+shared/private/mixed pointers, unsigned boundaries, CAS outcomes, 1,024 unique
+GPU tickets with a host update, and host/device floating-limit constants.
+
+Full build completed. The full CTest replay now exits **0**:
+**416 passed, 10 skipped, 0 failed / 426**, 475.65 seconds.
+All three failures from the earlier publication replay below are resolved.
+Measured compiler matrix: direct typed **51/51**, legacy PTX **46/51**, typed
+PTX **49/51**. Native-AOT numerical corpus: **45/45**.
+The original six-launch GPU smoke and 13-call / 39-launch Cosmos gates pass again.
+Logs remain in ignored `local/out/full-ctest-atomic-hardening.log`.
+
+Seven of the ten default-run skips are the PhysX gates, which need an external
+checkout. A separate replay with the pinned, patched PhysX source passes
+**7/7**, zero skips/failures, 29.05 seconds. Across both runs, **423 distinct
+registrations pass and 3 remain skipped**: CUDA samples sweep, CUDA samples
+vector-add external gate, and distinct toolchain-version matrix.
+See [PhysX evidence](physx-summary.json) and [workload boundaries](../../../docs/nvidia-workloads.md).
+
+This qualifies bounded source workloads on M4, not universal CUDA, native
+Omniverse/Isaac Sim, unmodified full PhysX, or usable Cosmos video.
+
 ## Passing focused gates
 
 - `cmake --build build -j2`: full build completed.
@@ -20,7 +46,7 @@ Pretrained video execution completed with 896 attention calls / 2,688 Apple M4
 kernel launches. Generated frames are severely distorted. This is execution
 evidence, not usable-video qualification; see [the Cosmos snapshot](cosmos-summary.json).
 
-## Full CTest Replay
+## Earlier Publication Replay
 
 Command (using this repository's public Metal toolchain discovery wrapper):
 
@@ -30,18 +56,18 @@ env PATH="$PWD/local/toolchain:$PATH" \
   ctest --test-dir build --output-on-failure -j2
 ```
 
-Final replay: **410 passed, 11 skipped, 3 failed / 424**, 298.62 seconds.
+Earlier replay: **410 passed, 11 skipped, 3 failed / 424**, 298.62 seconds.
 CTest exited 8; this is **not a green full-suite result**.
 Full logs remain local in ignored `local/out/full-ctest-final.log`.
 
-Three failing registrations share one compiler gap:
+At that revision, three failing registrations shared one compiler gap:
 
 - `functional_typed_direct_system_atomics`
 - `conformance_compiler_backend_matrix`
 - `conformance_cuda_projects_native_aot_corpus`
 
-Direct source compilation refuses LLVM's
-`llvm.nvvm.atomic.add.gen.i.sys.i32.p0`. The existing importer has no mapping
+Direct source compilation refused LLVM's
+`llvm.nvvm.atomic.add.gen.i.sys.i32.p0`. The importer had no mapping
 for that intrinsic; the non-finite constant correction does not add one.
 The same system-atomics workload passes through the PTX path.
 Measured compiler matrix: direct typed IR 50/51, legacy PTX 46/51, typed PTX 49/51.

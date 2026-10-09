@@ -472,6 +472,17 @@ add_executable(cumetal_runtime_cooperative_launch_test
 )
 
 if(CUMETAL_ENABLE_CUDA_REGISTRATION)
+    add_test(
+        NAME functional_cumetalc_native_float_limits
+        COMMAND bash
+                ${CMAKE_CURRENT_SOURCE_DIR}/run_cumetalc_link_executable.sh
+                $<TARGET_FILE:cumetalc>
+                ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/native_float_limits.cu
+                ${CMAKE_CURRENT_BINARY_DIR}/cumetalc_native_float_limits
+    )
+    set_tests_properties(functional_cumetalc_native_float_limits
+        PROPERTIES SKIP_RETURN_CODE 77)
+
     add_executable(cumetal_runtime_registration_path_test
         runtime_registration_path_test.cpp
     )
@@ -3865,6 +3876,17 @@ add_test(
 # Native-AOT source exit criterion: `cumetalc foo.cu -o foo` embeds a typed
 # metallib and registers host launch stubs through the versioned CuMetal ABI.
 if(CUMETAL_ENABLE_CUDA_REGISTRATION)
+    add_test(
+        NAME functional_cumetalc_native_scoped_atomic_returns
+        COMMAND bash
+                ${CMAKE_CURRENT_SOURCE_DIR}/run_cumetalc_link_executable.sh
+                $<TARGET_FILE:cumetalc>
+                ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/scoped_atomic_returns.cu
+                ${CMAKE_CURRENT_BINARY_DIR}/cumetalc_native_scoped_atomic_returns
+    )
+    set_tests_properties(functional_cumetalc_native_scoped_atomic_returns
+        PROPERTIES SKIP_RETURN_CODE 77)
+
     add_test(
         NAME functional_cumetalc_native_nonfinite_constants
         COMMAND bash

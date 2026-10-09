@@ -2896,6 +2896,49 @@ struct Importer {
                 !is_direct_asm_idiom(*call)) {
                 return import_inline_asm(*call, state, output_block, operation.location);
             }
+            if (const llvm::Function* callee = call->getCalledFunction();
+                callee != nullptr && callee->getName().starts_with("llvm.nvvm.atomic.")) {
+                llvm::StringRef name = callee->getName();
+                name.consume_front("llvm.nvvm.atomic.");
+                if (!name.consume_back(".gen.i.sys.i32.p0") ||
+                    (name != "add" && name != "exch" && name != "min" &&
+                     name != "max" && name != "and" && name != "or" &&
+                     name != "xor" && name != "cas")) {
+                    return fail(&instruction, "unsupported scoped NVVM atomic '" +
+                                                  callee->getName().str() + "'");
+                }
+                const unsigned arguments = name == "cas" ? 3 : 2;
+                if (call->arg_size() != arguments || !call->getType()->isIntegerTy(32) ||
+                    !call->getArgOperand(0)->getType()->isPointerTy()) {
+                    return fail(&instruction, "malformed 32-bit system NVVM atomic");
+                }
+                for (unsigned i = 1; i < arguments; ++i) {
+                    if (!call->getArgOperand(i)->getType()->isIntegerTy(32)) {
+                        return fail(&instruction, "malformed 32-bit system NVVM atomic payload");
+                    }
+                }
+                const Operand pointer = import_pointer_operand(
+                    *call->getArgOperand(0), state, output_block, operation.location);
+                if (pointer.type.address_space != AddressSpace::kDevice &&
+                    pointer.type.address_space != AddressSpace::kNone) {
+                    return fail(&instruction, "system NVVM atomic requires a device/UMA pointer");
+                }
+                operation.opcode = OpCode::kAtomic;
+                operation.operands.push_back(pointer);
+                for (unsigned i = 1; i < arguments; ++i) {
+                    operation.operands.push_back(import_operand(*call->getArgOperand(i), *state));
+                }
+                operation.attributes["atomic_op"] = name.str();
+                if (name == "min" || name == "max") operation.attributes["signed"] = "true";
+                // Generic pointer temporaries are proven by Metal legalization.
+                // Reuse the explicit coherent-UMA contract of typed PTX .sys atomics.
+                operation.attributes["metal_uma_system_scope"] = "true";
+                operation.attributes["cuda_legacy_atomic"] = "true";
+                operation.memory_scope = MemoryScope::kSystem;
+                operation.memory_ordering = MemoryOrdering::kRelaxed;
+                output_block->operations.push_back(std::move(operation));
+                return true;
+            }
             if (is_float_atomic_add_asm(*call)) {
                 // CuMetal's CUDA overlay spells `atomicAdd(float*, float)` as
                 // `atom.global.add.f32` so the PTX path selects Metal's native

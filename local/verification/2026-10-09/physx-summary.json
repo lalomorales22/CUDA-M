@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-09",
+  "device": "Apple M4",
+  "memory_gib": 32,
+  "os": "macOS 27.0",
+  "cuda_frontend": "LLVM 22.1.7",
+  "metal_compiler": "32023.921",
+  "source_repository": "https://github.com/NVIDIA-Omniverse/PhysX",
+  "source_tag": "107.3-physx-5.6.1",
+  "source_commit": "5ca9f472105a90d70d957c243cb0ef36fe251a9f",
+  "port": "repository PhysX patch series, bounded source-first subset",
+  "generated_metallib_count": 126,
+  "rigid_body_reference": {
+    "steps": 30,
+    "relative_tolerance": 0.001,
+    "absolute_tolerance": 0.00001,
+    "apple_gpu_launches": 960,
+    "passed": true
+  },
+  "conformance": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 29.05,
+    "tests": [
+      "conformance_physx_grb",
+      "conformance_physx_grb_friction",
+      "conformance_physx_grb_multibody",
+      "conformance_physx_grb_stacked",
+      "conformance_physx_grb_box",
+      "conformance_physx_grb_trimesh",
+      "conformance_physx_pbd_recreations"
+    ]
+  },
+  "limitations": [
+    "Patched source subset, not unmodified full PhysX SDK qualification",
+    "PBD physical-invariant checks are not full CPU/GPU backend parity",
+    "Not native Omniverse Kit or Isaac Sim compatibility"
+  ],
+  "local_evidence": [
+    "local/out/physx-build.log",
+    "local/out/physx-conformance.log",
+    "local/out/physx-all-conformance.log",
+    "build/physx-cumetal-runtime/conformance/"
+  ]
+}

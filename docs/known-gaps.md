@@ -9,6 +9,10 @@ bridge. It does not implement PyTorch's CUDA backend. A small pretrained video
 execution completed, but generated frames are severely distorted. Usable visual
 quality, production-size coverage, and full-model backend parity remain open.
 
+The [NVIDIA workload ledger](nvidia-workloads.md) separates source-level PhysX
+testing from native Omniverse/Isaac Sim compatibility. CUDA translation does
+not supply their OS ABI or NVIDIA RTX renderer.
+
 ## Gap groups
 
 - [Platform and legal boundaries](known-gaps/platform.md)

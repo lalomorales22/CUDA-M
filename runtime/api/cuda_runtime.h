@@ -58,6 +58,9 @@
 // declare malloc/free/exit. cumetalc force-includes this header, so pull those
 // declarations in here for source compatibility.
 #include <stdlib.h>
+// LLVM 22's math.h requests only infinity/NaN from float.h; libc++ then
+// guards that partial include. Load the full floating limits first.
+#include <float.h>
 #include <math.h>
 
 #include "cuda.h"
@@ -2794,14 +2797,28 @@ static __device__ __forceinline__ int atomicMin_system(int* ptr, int val) {
 }
 static __device__ __forceinline__ unsigned int atomicMin_system(unsigned int* ptr,
                                                                  unsigned int val) {
-    return __uAtomicMin_system(ptr, val);
+    // LLVM 21/22 erase unsignedness in the scoped min/max builtins. A system
+    // CAS loop preserves unsigned comparisons and atomic old-value semantics.
+    unsigned int old = __uAtomicCAS_system(ptr, 0u, 0u);
+    for (;;) {
+        const unsigned int next = old < val ? old : val;
+        const unsigned int observed = __uAtomicCAS_system(ptr, old, next);
+        if (observed == old) return old;
+        old = observed;
+    }
 }
 static __device__ __forceinline__ int atomicMax_system(int* ptr, int val) {
     return __iAtomicMax_system(ptr, val);
 }
 static __device__ __forceinline__ unsigned int atomicMax_system(unsigned int* ptr,
                                                                  unsigned int val) {
-    return __uAtomicMax_system(ptr, val);
+    unsigned int old = __uAtomicCAS_system(ptr, 0u, 0u);
+    for (;;) {
+        const unsigned int next = old > val ? old : val;
+        const unsigned int observed = __uAtomicCAS_system(ptr, old, next);
+        if (observed == old) return old;
+        old = observed;
+    }
 }
 static __device__ __forceinline__ int atomicCAS_system(int* ptr, int cmp, int val) {
     return __iAtomicCAS_system(ptr, cmp, val);

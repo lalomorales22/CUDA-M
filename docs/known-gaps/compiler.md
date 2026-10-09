@@ -57,8 +57,17 @@ prove downstream kernel correctness.
 
 The current 51-file manifest expects direct typed IR **51/51**, legacy PTX
 **46/51**, and typed PTX **49/51**. A manifest expectation is not a passing
-replay. On this Mac's LLVM 22.1.7, direct system atomics currently refuse
-`llvm.nvvm.atomic.add.gen.i.sys.i32.p0`; broad qualification remains open.
+replay. Direct NVVM now lowers 32-bit system add/exchange/min/max/bitwise/CAS
+intrinsics with relaxed ordering and an explicit coherent-UMA contract.
+Shared, private, and mixed device/shared pointer provenance is refused.
+Unsigned system min/max use system CAS loops because LLVM 21/22's builtins
+erase unsignedness. Old-value, unsigned-boundary, CAS, and 1,024-thread ticket
+tests run on M4; other widths/scopes/types are not qualified by this change.
+Broad qualification remains open.
+
+The 2026-10-09 LLVM 22.1.7 / Apple M4 replay matches those expectations:
+direct typed **51/51**, legacy PTX **46/51**, typed PTX **49/51**. This is a
+bounded compile-classification matrix, not a general compatibility percentage.
 
 With CUDA Clang 21-23, the historical reviewed 49-file matrix is:
 

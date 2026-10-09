@@ -114,8 +114,10 @@ flowchart LR
 
 CuMetal provides the compiler and CUDA-facing runtime. CUDA-M adds the local
 workflow, toolchain wrapper, independent validation fixture, and recorded M1
-evidence. The runtime remains at the pinned upstream revision. A local compiler
-fix preserves non-finite FP32 constant bits for the Cosmos attention path.
+evidence. Local compiler/header fixes preserve non-finite FP32 constants,
+lower 32-bit system atomics, preserve unsigned system min/max, and expose
+floating limits with LLVM 22. See the [NVIDIA workload ledger](docs/nvidia-workloads.md)
+for tested subsets and native-product platform blockers.
 
 ## Commands
 

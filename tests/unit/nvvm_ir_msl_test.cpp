@@ -2639,6 +2639,88 @@ int main() {
                  "typed NVVM sign-extends i32 to i64 through int");
     if (!sign_extend.ok) std::cerr << sign_extend.error << "\n";
 
+    for (const std::string atomic_name : {"add", "exch", "min", "max", "and", "or", "xor", "cas"}) {
+        const std::string extra = atomic_name == "cas" ? ", i32 7" : "";
+        const std::string extra_type = atomic_name == "cas" ? ", i32" : "";
+        const std::string intrinsic = "llvm.nvvm.atomic." + atomic_name + ".gen.i.sys.i32.p0";
+        const std::string source =
+            "target triple = \"nvptx64-nvidia-cuda\"\n"
+            "define ptx_kernel void @scoped(ptr %slot, ptr %out) {\n"
+            "  %old = call i32 @" + intrinsic + "(ptr %slot, i32 -2" + extra + ")\n"
+            "  store i32 %old, ptr %out\n  ret void\n}\n"
+            "declare i32 @" + intrinsic + "(ptr, i32" + extra_type + ")\n";
+        const auto compiled = metal::compile_nvvm_to_msl(source, "scoped.ll", "scoped");
+        bool contract = false;
+        if (compiled.ok) {
+            for (const auto& function : compiled.gpu_ir.functions) {
+                for (const auto& block : function.blocks) {
+                    for (const auto& operation : block.operations) {
+                        if (operation.opcode != ir::OpCode::kAtomic) continue;
+                        contract = operation.memory_scope == ir::MemoryScope::kSystem &&
+                            operation.memory_ordering == ir::MemoryOrdering::kRelaxed &&
+                            operation.attributes.at("metal_uma_system_scope") == "true" &&
+                            operation.attributes.at("atomic_op") == atomic_name &&
+                            operation.results.size() == 1 &&
+                            operation.operands.size() == (atomic_name == "cas" ? 3u : 2u);
+                        if (atomic_name == "min" || atomic_name == "max") {
+                            contract &= operation.attributes.at("signed") == "true";
+                        }
+                    }
+                }
+            }
+        }
+        ok &= expect(compiled.ok && contract,
+                     "32-bit NVVM system " + atomic_name + " preserves scope, order, and old-value result");
+        if (!compiled.ok) std::cerr << compiled.error << "\n";
+    }
+    for (const std::string suffix : {"i.sys.i64.p0", "f.sys.f32.p0", "i.cta.i32.p0"}) {
+        const std::string type = suffix.starts_with("f.") ? "float" :
+                                 suffix.find("i64") != std::string::npos ? "i64" : "i32";
+        const std::string value = type == "float" ? "1.0" : "1";
+        const std::string intrinsic = "llvm.nvvm.atomic.add.gen." + suffix;
+        const std::string source = "target triple = \"nvptx64-nvidia-cuda\"\n"
+            "define ptx_kernel void @unsupported(ptr %slot) {\n"
+            "  %old = call " + type + " @" + intrinsic + "(ptr %slot, " + type + " " + value + ")\n"
+            "  ret void\n}\ndeclare " + type + " @" + intrinsic + "(ptr, " + type + ")\n";
+        const auto refused = metal::compile_nvvm_to_msl(source, "unsupported.ll", "unsupported");
+        ok &= expect(!refused.ok && refused.error.find("unsupported scoped NVVM atomic") != std::string::npos,
+                     "unqualified scoped NVVM atomic " + suffix + " is refused");
+    }
+    const auto shared_system_atomic = metal::compile_nvvm_to_msl(R"llvm(
+target triple = "nvptx64-nvidia-cuda"
+define ptx_kernel void @bad_scope(ptr addrspace(3) %shared) {
+  %generic = addrspacecast ptr addrspace(3) %shared to ptr
+  %old = call i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr %generic, i32 1)
+  ret void
+}
+declare i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr, i32)
+)llvm", "bad-scope.ll", "bad_scope");
+    ok &= expect(!shared_system_atomic.ok,
+                 "system NVVM atomics cannot claim coherent UMA for a shared pointer");
+    const auto mixed_system_atomic = metal::compile_nvvm_to_msl(R"llvm(
+target triple = "nvptx64-nvidia-cuda"
+define ptx_kernel void @mixed_scope(ptr %device, ptr addrspace(3) %shared, i1 %choose) {
+  %generic = addrspacecast ptr addrspace(3) %shared to ptr
+  %mixed = select i1 %choose, ptr %device, ptr %generic
+  %old = call i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr %mixed, i32 1)
+  ret void
+}
+declare i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr, i32)
+)llvm", "mixed-scope.ll", "mixed_scope");
+    ok &= expect(!mixed_system_atomic.ok,
+                 "system NVVM atomics refuse mixed device/shared pointer provenance");
+    const auto private_system_atomic = metal::compile_nvvm_to_msl(R"llvm(
+target triple = "nvptx64-nvidia-cuda"
+define ptx_kernel void @private_scope() {
+  %local = alloca i32
+  %old = call i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr %local, i32 1)
+  ret void
+}
+declare i32 @llvm.nvvm.atomic.add.gen.i.sys.i32.p0(ptr, i32)
+)llvm", "private-scope.ll", "private_scope");
+    ok &= expect(!private_system_atomic.ok,
+                 "system NVVM atomics refuse thread-private storage");
+
     const auto nonfinite = metal::compile_nvvm_to_msl(R"llvm(
 target triple = "nvptx64-nvidia-cuda"
 define ptx_kernel void @nonfinite(ptr %out) {
