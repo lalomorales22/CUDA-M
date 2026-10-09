@@ -2639,6 +2639,24 @@ int main() {
                  "typed NVVM sign-extends i32 to i64 through int");
     if (!sign_extend.ok) std::cerr << sign_extend.error << "\n";
 
+    const auto nonfinite = metal::compile_nvvm_to_msl(R"llvm(
+target triple = "nvptx64-nvidia-cuda"
+define ptx_kernel void @nonfinite(ptr %out) {
+  store float 0x7FF0000000000000, ptr %out
+  %negative = getelementptr float, ptr %out, i64 1
+  store float 0xFFF0000000000000, ptr %negative
+  %nan = getelementptr float, ptr %out, i64 2
+  store float 0x7FF8000020000000, ptr %nan
+  ret void
+}
+)llvm", "nonfinite.ll", "nonfinite");
+    ok &= expect(nonfinite.ok &&
+                     nonfinite.source.find("as_type<float>(0x7f800000u)") != std::string::npos &&
+                     nonfinite.source.find("as_type<float>(0xff800000u)") != std::string::npos &&
+                     nonfinite.source.find("as_type<float>(0x7fc00001u)") != std::string::npos,
+                 "NVVM non-finite FP32 literals preserve signs and NaN payload bits in Metal");
+    if (!nonfinite.ok) std::cerr << nonfinite.error << "\n";
+
     if (!ok) return 1;
     std::cout << "NVVM -> CuMetal IR -> typed MSL tests passed\n";
     return 0;

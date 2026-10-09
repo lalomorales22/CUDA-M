@@ -46,6 +46,10 @@ add_test(
             $<TARGET_FILE:air_inspect>
             ${CMAKE_CURRENT_SOURCE_DIR}/reference/reference.metallib
 )
+set_tests_properties(air_abi_validate_reference PROPERTIES
+    FIXTURES_SETUP apple_reference_metallib)
+set_tests_properties(air_abi_metal_load PROPERTIES
+    FIXTURES_REQUIRED apple_reference_metallib)
 
 add_test(
     NAME air_abi_emit_validate_xcrun

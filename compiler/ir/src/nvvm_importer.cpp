@@ -304,6 +304,14 @@ SourceLocation import_location(const llvm::Instruction& instruction,
 
 std::string constant_spelling(const llvm::Constant& constant) {
     if (const auto* floating = llvm::dyn_cast<llvm::ConstantFP>(&constant)) {
+        const auto& value = floating->getValueAPF();
+        if (floating->getType()->isFloatTy() && (value.isInfinity() || value.isNaN())) {
+            // Decimal APFloat spellings are not Metal literals; preserve NaN payloads too.
+            std::ostringstream bits;
+            bits << "0f" << std::hex << std::setw(8) << std::setfill('0')
+                 << value.bitcastToAPInt().getZExtValue();
+            return bits.str();
+        }
         llvm::SmallVector<char, 32> text;
         floating->getValueAPF().toString(text);
         std::string spelling(text.begin(), text.end());

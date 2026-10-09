@@ -18,7 +18,11 @@ GPU correctness, and cache hits and the NVVM/legacy compiler paths are untraced.
   production libraries.
 - Direct AIR generation remains tooling/research only.
 
-With CUDA Clang 21-23, the reviewed manifest-controlled 49-file
+The current 51-file manifest expects direct typed IR **51/51**, legacy PTX
+**46/51**, and typed PTX **49/51**. These expectations require a passing replay;
+they are not a new hardware/toolchain qualification.
+
+With CUDA Clang 21-23, the historical reviewed 49-file
 production-metallib matrix records:
 
 | Frontend | Legacy | Typed CuMetal IR |

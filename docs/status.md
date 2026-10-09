@@ -14,6 +14,16 @@ is split by subsystem.
 
 ## Snapshot
 
+The current 51-file compiler manifest expects direct typed IR **51/51**,
+legacy PTX **46/51**, and typed PTX **49/51**. These are enrollment expectations,
+not a fresh qualification of every toolchain. The older measured counts below
+refer to the prior 49-file corpus.
+
+The 2026-10-09 M4/LLVM 22.1.7 replay measured direct typed IR **50/51**,
+legacy PTX **46/51**, and typed PTX **49/51**. Direct system atomics refuse an
+unsupported NVVM intrinsic. The small pretrained Cosmos pipeline completes,
+but its video is distorted; see [the bounded experiment](cosmos-feasibility.md).
+
 - Enrolled headless `cuda-samples`: **83/83 pass**, zero waivers and zero
   nonpassing entries on the 2026-08-30 rerun. The cooperative CG entry requires
   both its device residual and independent host equation error.

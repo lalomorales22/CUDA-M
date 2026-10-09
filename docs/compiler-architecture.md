@@ -139,8 +139,12 @@ cumetalc kernel.cu --emit=exe        -o kernel
 | `--fp64=fast48\|wide48\|ieee64\|native\|emulate\|warn` | Select the virtual FP64 policy; direct typed `.cu` compilation and runtime/JIT default to `fast48` (`emulate` alias), while offline PTX compatibility retains `native`. |
 | `--save-temps` | Retain link intermediates. |
 
+The current 51-file manifest expects direct typed IR **51/51**, legacy PTX
+**46/51**, and typed PTX **49/51**. These are enrollment expectations, not new
+qualification evidence; rerun the gates on each supported toolchain.
+
 The default follows measured production-metallib compilation coverage rather
-than treating either backend as universally complete. The reviewed table below
+than treating either backend as universally complete. The historical 49-file table below
 uses CUDA Clang 21-23:
 
 | Input corpus | `legacy` | `cumetal-ir` |

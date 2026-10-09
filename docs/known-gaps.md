@@ -3,6 +3,12 @@
 This is the maintained gap index. A missing item is not automatically supported;
 current status must be backed by tests and evidence.
 
+The [local Cosmos experiment](cosmos-feasibility.md) validates bounded SDPA
+and a reduced random-weight Cosmos transformer through an explicit PyTorch
+bridge. It does not implement PyTorch's CUDA backend. A small pretrained video
+execution completed, but generated frames are severely distorted. Usable visual
+quality, production-size coverage, and full-model backend parity remain open.
+
 ## Gap groups
 
 - [Platform and legal boundaries](known-gaps/platform.md)

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-09",
+  "hardware": "Apple M4 Mac mini, 32 GiB",
+  "macos": "27.0",
+  "torch": "2.14.1",
+  "diffusers": "0.41.0",
+  "attention_selftest": {
+    "status": "passed",
+    "calls": 13,
+    "apple_gpu_launches": 39,
+    "negative_checks": 9,
+    "fp32_max_absolute_error": 8.344650268554688e-7
+  },
+  "pretrained_video": {
+    "gate": "execution_only",
+    "status": "passed",
+    "model": "nvidia/Cosmos-Predict2-2B-Video2World",
+    "revision": "f50c09f5d8ab133a90cac3f4886a6471e9ba3f18",
+    "attention_backend": "CuMetal",
+    "other_tensor_math": "PyTorch MPS",
+    "automatic_cpu_arithmetic_fallback": false,
+    "safety_checks": "retained; Qwen inference exceptions fail closed",
+    "size": [320, 192],
+    "frames": 9,
+    "steps": 8,
+    "attention_calls": 896,
+    "apple_gpu_launches": 2688,
+    "elapsed_seconds": 346.72666229100287,
+    "decoded_frame_std": 73.69921936914082,
+    "temporal_mean_absolute_delta": 30.862884521484375,
+    "visual_quality": "severely distorted; not usable footage",
+    "limitations": "No production-size qualification, performance tuning, or full-model backend parity comparison."
+  },
+  "artifacts": "Full traces, model weights, and video are local-only in ignored local/out/."
+}

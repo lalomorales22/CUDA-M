@@ -55,7 +55,12 @@ prove downstream kernel correctness.
 
 ## Typed CuMetal IR migration
 
-With CUDA Clang 21-23, the reviewed production-metallib matrix is:
+The current 51-file manifest expects direct typed IR **51/51**, legacy PTX
+**46/51**, and typed PTX **49/51**. A manifest expectation is not a passing
+replay. On this Mac's LLVM 22.1.7, direct system atomics currently refuse
+`llvm.nvvm.atomic.add.gen.i.sys.i32.p0`; broad qualification remains open.
+
+With CUDA Clang 21-23, the historical reviewed 49-file matrix is:
 
 | Frontend | Legacy | Typed CuMetal IR |
 | --- | ---: | ---: |

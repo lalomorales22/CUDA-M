@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#verified-on-an-m1">M1 results</a> ·
+  <a href="#verified-on-m1-and-m4">M1 and M4 results</a> ·
   <a href="local/EVIDENCE.md">REA evidence</a> ·
   <a href="docs/known-gaps.md">Known limits</a>
 </p>
@@ -21,7 +21,7 @@ a local build runner, Metal toolchain discovery, and independent GPU correctness
 checks. Write ordinary CUDA C++, compile it into Metal, and run supported kernels
 on your Mac's GPU.
 
-**Verified on Apple M1:** six GPU launches passed numerical checks, including
+**Verified on Apple M1 and M4:** six GPU launches passed numerical checks, including
 matrix multiplication and shared-memory reduction. REA captured CUDA launch
 calls reaching Apple's Metal compute driver. See the
 [dated verification report](local/EVIDENCE.md) for scope and evidence.
@@ -70,7 +70,7 @@ The trace also identifies the Apple GPU and successful kernel completion.
 For another source file, use `./cuda-mac compile your-file.cu -o your-program`.
 Keep the checkout in place: compiled programs link to its local runtime.
 
-## Verified on an M1
+## Verified on M1 and M4
 
 | CUDA workload | Checked locally |
 | --- | --- |
@@ -91,8 +91,16 @@ block sum is checked.
 - [Portable REA evidence summary](local/verification/2026-10-08/rea-summary.json)
 
 These checks establish the selected kernels' correctness. They are not a
-performance benchmark or the full upstream conformance suite. M4 execution has
-not been verified by this project.
+performance benchmark or the full upstream conformance suite. The same checks
+also passed on an M4 Mac mini on October 9, 2026.
+
+An [experimental Cosmos attention integration](docs/cosmos-feasibility.md)
+passes 13 attention calls / 39 Apple-GPU launches on M4, including a reduced
+random-weight Cosmos transformer. A pretrained nine-frame video test completed
+with 2,688 Apple-GPU kernel launches, but its generated frames are badly distorted.
+Execution works at the tested settings; usable video quality remains unverified.
+See the [M4 verification notes](local/verification/2026-10-09/VALIDATION.md)
+and [portable Cosmos snapshot](local/verification/2026-10-09/cosmos-summary.json).
 
 ## How it runs
 
@@ -106,8 +114,8 @@ flowchart LR
 
 CuMetal provides the compiler and CUDA-facing runtime. CUDA-M adds the local
 workflow, toolchain wrapper, independent validation fixture, and recorded M1
-evidence. The runtime and compiler source are unchanged from the pinned upstream
-revision.
+evidence. The runtime remains at the pinned upstream revision. A local compiler
+fix preserves non-finite FP32 constant bits for the Cosmos attention path.
 
 ## Commands
 
@@ -116,6 +124,7 @@ revision.
 | `./cuda-mac build` | Build the local compiler, runtime, and helpers |
 | `./cuda-mac doctor` | Check dependency discovery |
 | `./cuda-mac test` | Compile and numerically validate six GPU launches |
+| `./cuda-mac cosmos-test` | Verify the bounded Cosmos attention bridge in its local Python environment |
 | `./cuda-mac compile input.cu -o output` | Compile supported CUDA source |
 | `python3 local/test_trace_validation.py` | Check rejection of misleading GPU evidence |
 
@@ -129,8 +138,11 @@ PyTorch's CUDA backend, NVIDIA SASS binaries, tensor-core instructions, and
 complete CUDA library compatibility are outside the verified scope. Some upstream
 library paths use the CPU. Apple GPUs do not provide native NVIDIA FP64 semantics.
 
-Read the [upstream known gaps](docs/known-gaps.md) before choosing a workload.
-The optional binary compatibility alias is disabled in this Release build.
+Read the [known gaps](docs/known-gaps.md), [verified results](docs/verified-results.md),
+and [compiler architecture](docs/compiler-architecture.md) before choosing a workload.
+SIMD/warp width is fixed at 32; no private Apple APIs are used.
+SASS execution is unsupported. The optional binary compatibility alias is
+disabled in Release builds unless explicitly enabled.
 
 ## Credit and license
 

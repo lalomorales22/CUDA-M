@@ -2,7 +2,8 @@
 
 This is a local source build of [CuMetal](https://github.com/Lulzx/cuda-metal),
 plus a Mac-specific toolchain wrapper and independent numerical tests.
-The compiler/runtime are upstream CuMetal, not a newly written NVIDIA CUDA driver.
+The compiler/runtime are based on upstream CuMetal. A local compiler correction
+now preserves non-finite FP32 constants for the experimental Cosmos path.
 
 Verified on **Apple M1, macOS 26.4.1**, on October 8, 2026:
 ordinary `.cu` programs compile and execute selected FP32 kernels on the Apple GPU.
@@ -13,7 +14,7 @@ See [the evidence report](EVIDENCE.md).
 ## Run it
 
 ```bash
-cd ~/Software/cuda-mac
+cd CUDA-M
 ./cuda-mac test
 ```
 
@@ -28,7 +29,7 @@ and runtime SHA-256 identities. A failed rerun replaces the old success status.
 Compile and run the included CUDA example yourself:
 
 ```bash
-cd ~/Software/cuda-mac
+cd CUDA-M
 ./cuda-mac compile samples/vectorAdd/vectorAdd.cu -o local/out/my-vector-add
 CUMETAL_TRACE_GPU=1 ./local/out/my-vector-add
 ```
@@ -56,7 +57,7 @@ These are correctness checks, not performance benchmarks or broad CUDA conforman
 ## Build and toolchain
 
 ```bash
-cd ~/Software/cuda-mac
+cd CUDA-M
 ./cuda-mac build
 ./cuda-mac doctor
 python3 local/test_trace_validation.py
@@ -93,13 +94,18 @@ This is experimental compatibility through Metal. It does not make PyTorch's
 CUDA backend, arbitrary CUDA extensions, NVIDIA machine code (SASS), tensor-core
 instructions, or every CUDA library work on a Mac. Some upstream library paths
 use the CPU. Native NVIDIA FP64 behavior is not available from the Apple GPU.
-The optional binary alias was disabled for this Release build. M4 execution and
-performance have not been tested here.
+The optional binary alias was disabled for this Release build. The six numerical
+checks also passed on an M4 Mac mini on October 9, 2026; M4 performance has not
+been benchmarked. See [the Cosmos experiment](../docs/cosmos-feasibility.md) for
+the separately validated attention bridge and remaining pretrained-video gates.
 
 See upstream [known gaps](../docs/known-gaps.md) before choosing an application.
 The next useful step is compiling a specific CUDA workload and expanding its
-numerical checks. The full upstream test suite was not run; no compiler or runtime
-source changes were made in this checkout.
+numerical checks. The full upstream test suite was exercised in Release mode
+with the binary shim disabled; direct system atomics remain an LLVM 22.1.7 gap.
+See the [M4 verification notes](verification/2026-10-09/VALIDATION.md) for passes,
+failures, and skips. The local compiler change has focused unit and Apple-GPU
+functional coverage; the runtime is unchanged.
 
 ## Files added locally
 

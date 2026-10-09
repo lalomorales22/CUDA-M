@@ -24,6 +24,7 @@ def environment(trace=False):
     env.update(CUMETAL_CACHE_DIR=str(OUT / "cache"),
                CUMETAL_ENABLE_LLMC_CPU_EMULATION="0",
                CUMETAL_DISABLE_LLMC_EMULATION="1",
+               PYTORCH_ENABLE_MPS_FALLBACK="0",
                CUMETAL_TOOL_XCRUN=str(ROOT / "local/toolchain/xcrun"))
     env["PATH"] = str(ROOT / "local/toolchain") + os.pathsep + env.get("PATH", "")
     if trace:
@@ -158,10 +159,28 @@ def test():
     print(f"\nVERIFIED: numerical checks and 6 completed Apple-GPU launches.\nReport: {report_path}")
 
 
+def cosmos_test():
+    python = OUT / "cosmos-venv/bin/python"
+    if not python.is_file():
+        raise RuntimeError("Cosmos environment missing; see docs/cosmos-feasibility.md")
+    OUT.mkdir(parents=True, exist_ok=True)
+    report_path = OUT / "cosmos-attention-results.json"
+    report_path.write_text(json.dumps({"status": "running", "stage": "compilation"}) + "\n")
+    try:
+        run([compiler(), ROOT / "local/cosmos_attention.cu", "-o", OUT / "cosmos-attention"],
+            "cosmos-attention-compile.log")
+        run([python, ROOT / "local/cosmos_cumetal.py"], "cosmos-attention-test.log")
+    except Exception as error:
+        report = json.loads(report_path.read_text())
+        report.update(status="failed", error=str(error))
+        report_path.write_text(json.dumps(report, indent=2) + "\n")
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("build", "doctor", "test"):
+    for name in ("build", "doctor", "test", "cosmos-test"):
         commands.add_parser(name)
     compile_parser = commands.add_parser("compile", help="compile supported CUDA C++")
     compile_parser.add_argument("source", type=Path)
@@ -173,6 +192,8 @@ def main():
         test()
     elif args.command == "doctor":
         run([BUILD / "cumetal", "doctor"])
+    elif args.command == "cosmos-test":
+        cosmos_test()
     else:
         source, output = args.source.resolve(), args.output.resolve()
         if not source.is_file():
