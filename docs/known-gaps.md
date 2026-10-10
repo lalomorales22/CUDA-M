@@ -6,10 +6,13 @@ current status must be backed by tests and evidence.
 The [local Cosmos experiment](cosmos-feasibility.md) validates bounded SDPA
 and a reduced random-weight Cosmos transformer through an explicit PyTorch
 bridge. It does not implement PyTorch's CUDA backend. A small pretrained video
-execution completed, but generated frames are severely distorted. A separate
-1280x704 native-MPS run produces a recognizable nine-frame clip with softness
-and texture artifacts; it contains no CuMetal attention calls. Longer video,
-production quality, and full-model backend parity remain open.
+execution completed, but generated frames are severely distorted. Follow-up
+1280x704 runs produce recognizable nine-frame clips with both native-MPS
+attention and tiled CUDA-M attention, retaining softness and texture artifacts.
+Other model math remains on MPS. The CUDA-M run takes about 25.6 minutes for
+0.5625 seconds of video. Final latent relative RMS difference from the recorded
+MPS baseline is 5.01%; no full-model parity tolerance is defined. Longer video,
+production quality, performance, and full-model backend parity remain open.
 
 The [NVIDIA workload ledger](nvidia-workloads.md) separates source-level PhysX
 testing from native Omniverse/Isaac Sim compatibility. CUDA translation does

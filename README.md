@@ -96,17 +96,21 @@ also passed on an M4 Mac mini on October 9, 2026.
 
 An [experimental Cosmos attention integration](docs/cosmos-feasibility.md)
 passes 13 attention calls / 39 Apple-GPU launches on M4, including a reduced
-random-weight Cosmos transformer. A pretrained nine-frame video test completed
-with 2,688 Apple-GPU kernel launches, but its generated frames are badly distorted.
-Execution works at those settings. A follow-up native-MPS run at 1280x704
-produces a recognizable nine-frame welding clip, with remaining softness and
-texture artifacts. It uses no CuMetal attention; full-model CUDA-M parity and
-longer, production-quality video remain unverified.
+random-weight Cosmos transformer. The pretrained 1280x704 test now produces a
+recognizable nine-frame welding clip using **CUDA-M for every transformer
+attention call**, with other model math on PyTorch MPS. The tiled worker
+completes 896 calls and 37,632 validated softmax GPU launches; separate
+application receipts cover 75,264 cuBLAS calls, not independently traced GEMM
+kernels. This 0.5625-second clip takes about 25.6 minutes on M4 and remains soft
+and textured. Full-model numerical parity, longer video, and production quality
+remain unqualified; this is not a general PyTorch CUDA backend.
 See the [M4 verification notes](local/verification/2026-10-09/VALIDATION.md)
-and [Cosmos quality evidence](local/verification/2026-10-09/COSMOS-QUALITY.md).
+and [pretrained CUDA-M evidence](local/verification/2026-10-09/COSMOS-CUMETAL-720P.md).
 An [experimental tiled attention worker](local/verification/2026-10-09/COSMOS-BLAS.md)
-also passes the 10,560-token geometry needed by that clip using existing cuBLAS/MPS
+supports the 10,560-token geometry needed by that clip using existing cuBLAS/MPS
 calls and source-compiled CUDA softmax, without allocating the full score matrix.
+Earlier small-resolution videos remain distorted; their
+[quality investigations](local/verification/2026-10-09/COSMOS-QUALITY.md) are retained.
 
 ## PhysX on Metal
 

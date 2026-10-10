@@ -8,7 +8,7 @@ NVIDIA binary or product compatibility.
 
 | Workload | Current boundary |
 | --- | --- |
-| Cosmos Predict2 | Source-compiled attention and reduced transformer checks pass; the small CuMetal pretrained video is distorted. Native MPS now produces a recognizable 1280x704 nine-frame clip, with softness/artifacts. Longer video and full-model CuMetal parity remain open. |
+| Cosmos Predict2 | A recognizable 1280x704 nine-frame pretrained clip completes with all transformer attention through tiled CUDA-M and other math on MPS: 896 calls, 37,632 validated softmax GPU launches. The 0.5625-second clip takes about 25.6 minutes and remains soft/textured. Small-resolution runs are distorted; longer video and full-model numerical parity remain open. |
 | PhysX 5.6.1 | All seven existing patched-source conformance gates pass on M4. Results apply only to the selected port, not the whole SDK or Isaac Sim. |
 | Omniverse Kit | Native macOS Apple-GPU execution is not supported by upstream requirements and has not been demonstrated here. |
 | Isaac Sim | Native macOS execution is not supported by upstream requirements and has not been demonstrated here. |
@@ -85,7 +85,7 @@ env PATH="$PWD/local/toolchain:$PATH" \
 2. Broaden PhysX workloads beyond these passing patched subsets, retaining
    numerical comparisons and actual Metal kernel launch evidence.
 3. Expand source workload coverage using Warp and the CUDA samples manifest.
-4. Diagnose Cosmos backend numerical/visual parity before enlarging the model
-   or presenting it as usable video generation.
+4. Define and investigate Cosmos full-model numerical parity, then qualify
+   longer video and performance beyond the selected half-second visual smoke test.
 
 No new library shim should be added without a named workload and its gate.

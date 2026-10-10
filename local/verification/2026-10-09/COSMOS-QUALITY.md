@@ -123,3 +123,8 @@ metrics, artifact hashes, inspection, and limits. Evidence:
 
 Raw reports are unchanged and retain their original requires-inspection field;
 this document and the portable summary record the subsequent visual inspection.
+
+The subsequent [pretrained CUDA-M run](COSMOS-CUMETAL-720P.md) now exercises
+all attention calls at this geometry and produces a recognizable clip. The MPS
+result and its zero-CuMetal boundary above remain unchanged; full-model numerical
+parity remains unqualified.
