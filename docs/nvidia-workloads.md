@@ -8,6 +8,7 @@ NVIDIA binary or product compatibility.
 
 | Workload | Current boundary |
 | --- | --- |
+| CUDA Samples v12.8 | Unmodified upstream `vectorAdd` checks 50,000 outputs with one completed exact-path Apple M4 GPU launch. Unmodified `deviceQuery` reports one Apple M4 and PASS, but only tests API reporting; its synthetic NVIDIA-style properties do not establish hardware equivalence. Only these selected sources were acquired, not a full sample-suite checkout. See the [source proof](../local/verification/2026-10-10/CUDA-PROOF.md). |
 | Cosmos Predict2 | A recognizable 1280x704 nine-frame pretrained clip completes with all transformer attention through tiled CUDA-M and other math on MPS: 896 calls, 37,632 validated softmax GPU launches. The 0.5625-second clip takes about 25.6 minutes and remains soft/textured. Small-resolution runs are distorted; longer video and full-model numerical parity remain open. |
 | PhysX 5.6.1 | All seven existing patched-source conformance gates pass on M4. Results apply only to the selected port, not the whole SDK or Isaac Sim. |
 | Warp 1.12.0 | 25 selected upstream tests pass across 10 patched-source modules on M4, with 44 separately validated GPU launches. The vector assignment/copy module improves from 2/3 to 3/3 after fixing 64-bit registration argument classification. Full-suite support is blocked by large argument lists, some device-printing paths, and missing driver APIs. See the [Warp investigation](warp-feasibility.md). |

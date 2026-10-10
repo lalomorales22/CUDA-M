@@ -1,0 +1,533 @@
+{
+  "schema_version": 1,
+  "session_date": "2026-10-10",
+  "timezone": "America/Los_Angeles",
+  "status": "bounded_source_first_api_kernel_numerical_and_performance_gates_completed",
+  "scope": "Selected NVIDIA CUDA sample source and repository FP32 matrix kernels compiled against CuMetal's clean-room headers/runtime on Apple M4; not native NVIDIA binary execution or general CUDA/product parity.",
+  "host": {
+    "model": "Mac16,10",
+    "processor": "Apple M4",
+    "unified_memory_bytes": 34359738368,
+    "os": "macOS",
+    "os_version": "27.0",
+    "os_build": "26A428",
+    "evidence": "Independent read-only sysctl and sw_vers audit; launch device identity is independently checked in retained traces."
+  },
+  "source_identity": {
+    "cumetal_commit": "c709c6770502e4fac4d72ff22b11cbfb0f1dc664",
+    "cumetal_commit_evidence": "Independently read git HEAD; the controlling task reports no core source changes for this proof run.",
+    "cuda_samples_repository": "https://github.com/NVIDIA/cuda-samples",
+    "cuda_samples_tag": "v12.8",
+    "cuda_samples_commit": "db3eea23946bca2e90a75eca2b5b3e07158a9e11",
+    "fixture_root": "local/out/cuda-proof-2026-10-10/vendor/cuda-samples",
+    "fixture_scope": "Five pinned external files, not a full cuda-samples checkout; no source edits, CUDA Toolkit, NVIDIA driver, or new package installation reported.",
+    "remote_identity_evidence": "The controlling task resolved the v12.8 tag and matched all five local Git blob IDs and byte counts to GitHub Contents API records at the pinned commit. This auditor independently recomputed the local IDs, sizes and SHA-256 hashes; it did not repeat remote requests.",
+    "fixture_git_blob_identities": {
+      "Samples/1_Utilities/deviceQuery/deviceQuery.cpp": {
+        "git_blob_sha1": "a6c46d54657ae68ed35214cc420771ed991bf9ab",
+        "size_bytes": 13921
+      },
+      "Samples/0_Introduction/vectorAdd/vectorAdd.cu": {
+        "git_blob_sha1": "284b0f0e332f022ed6789456182238fc2fc6af54",
+        "size_bytes": 6676
+      },
+      "Common/helper_cuda.h": {
+        "git_blob_sha1": "dc0efc46fa7dd1007fa090eeb0852c9993ac50ff",
+        "size_bytes": 27970
+      },
+      "Common/helper_string.h": {
+        "git_blob_sha1": "39a1b38058b67105c971fea266b00c4dc88db6ae",
+        "size_bytes": 14875
+      },
+      "LICENSE": {
+        "git_blob_sha1": "1e58bd5df0dd619135c58af0428c0f73c62921d7",
+        "size_bytes": 1601
+      }
+    },
+    "security_evidence": "Parent-recorded bounded advisory lookup is documented in CUDA-PROOF.md; not independently repeated by this artifact auditor or a complete dependency/security certification."
+  },
+  "invocation": {
+    "evidence": "Normalized parent-recorded commands, environment and process exit statuses. Retained program output alone does not independently reconstruct the parent environment or process exit status.",
+    "workspace_prefix": "$ROOT",
+    "root_process_exit_codes": {
+      "deviceQuery_compile": 0,
+      "deviceQuery": 0,
+      "vectorAdd_gate": 0,
+      "matmul_contract": 0,
+      "matmul_trace": 0,
+      "matmul_measure": 0,
+      "matmul_report": 0
+    },
+    "common_runtime_environment": {
+      "CUMETAL_ENABLE_WORKLOAD_SPECIALIZATIONS": "0",
+      "CUMETAL_ENABLE_LLMC_CPU_EMULATION": "0",
+      "CUMETAL_DISABLE_LLMC_EMULATION": "1"
+    },
+    "deviceQuery_compile_command": "xcrun clang++ -std=c++17 -O2 -DCUDART_VERSION=CUDA_VERSION -I\"$ROOT/runtime/api\" -I\"$ROOT/local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Common\" \"$ROOT/local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Samples/1_Utilities/deviceQuery/deviceQuery.cpp\" -L\"$ROOT/build\" -lcumetal -Wl,-rpath,\"$ROOT/build\" -o \"$ROOT/local/out/cuda-proof-2026-10-10/deviceQuery\"",
+    "deviceQuery": {
+      "additional_environment": {
+        "CUMETAL_TRACE_GPU": "1"
+      },
+      "command": "\"$ROOT/local/out/cuda-proof-2026-10-10/deviceQuery\"",
+      "log": "local/out/cuda-proof-2026-10-10/deviceQuery.log"
+    },
+    "vectorAdd": {
+      "additional_environment": {
+        "PATH": "$ROOT/local/toolchain:$PATH",
+        "CUMETAL_TOOL_XCRUN": "$ROOT/local/toolchain/xcrun",
+        "CUMETAL_CUDA_SAMPLES_DIR": "$ROOT/local/out/cuda-proof-2026-10-10/vendor/cuda-samples",
+        "CUMETAL_BUILD_DIR": "$ROOT/build",
+        "CUMETAL_PTX_BACKEND": "cumetal-ir"
+      },
+      "command": "bash tests/cuda_projects/run_cuda_samples_vectoradd_gpu.sh \"$ROOT\"",
+      "log": "local/out/cuda-proof-2026-10-10/vectorAdd.log",
+      "internal_environment": "The gate enables CUMETAL_TRACE_GPU=1 and uses a fresh mktemp registration-cache directory."
+    },
+    "matmul_contract": {
+      "additional_environment": {
+        "PATH": "$ROOT/local/toolchain:$PATH",
+        "CUMETAL_TOOL_XCRUN": "$ROOT/local/toolchain/xcrun",
+        "CUMETAL_BUILD_DIR": "$ROOT/build",
+        "CUMETAL_MATMUL_OUT": "$ROOT/local/out/cuda-proof-2026-10-10/matmul",
+        "CUMETAL_MSL_MATH_MODE": "safe",
+        "CUMETAL_TRACE_GPU": "0"
+      },
+      "command": "bash tools/matmul_bench/test.sh",
+      "log": "local/out/cuda-proof-2026-10-10/matmul-contract.log"
+    },
+    "matmul_trace": {
+      "additional_environment": {
+        "CUMETAL_MSL_MATH_MODE": "safe",
+        "CUMETAL_TRACE_GPU": "1"
+      },
+      "command": "local/out/cuda-proof-2026-10-10/matmul/matmul_bench local/out/cuda-proof-2026-10-10/matmul/kernels.metallib 2048 2048 2048 1 block64_32",
+      "log": "local/out/cuda-proof-2026-10-10/matmul-gpu-trace.log"
+    },
+    "matmul_measure": {
+      "additional_environment": {
+        "CUMETAL_MSL_MATH_MODE": "safe",
+        "CUMETAL_TRACE_GPU": "0"
+      },
+      "command": "local/out/cosmos-venv/bin/python tools/matmul_bench/measure.py \"$ROOT/local/out/cuda-proof-2026-10-10/matmul\" --output \"$ROOT/local/out/cuda-proof-2026-10-10/matmul-measure\" --size 2048 --iterations 5",
+      "log": "local/out/cuda-proof-2026-10-10/matmul-measure.log"
+    },
+    "output_preservation": "Existing helpers overwrite result names; reproduction must choose fresh output paths. The official vectorAdd builder also reuses tests/cuda_projects/cuda_samples_vectoradd/build/vectorAdd."
+  },
+  "device_query": {
+    "status": "passed_host_api_gate",
+    "reported_device_count": 1,
+    "reported_device_name": "Apple M4",
+    "reported_cuda_driver_version": "12.0",
+    "reported_cuda_runtime_version": "12.0",
+    "reported_cuda_compute_capability": "8.0",
+    "reported_global_memory_bytes": 26800603136,
+    "kernel_launch_records": 0,
+    "scope": "Host runtime-API enumeration and properties only. The sample launches no compute kernel; PASS alone would also permit zero devices, so the observed one-device Apple identity is recorded separately.",
+    "property_boundary": "The name is derived from Metal. CUDA version, SM/core labels, clock/cache/bus values include synthetic or conservative compatibility values; the sample's 64 CUDA Cores calculation is not a physical M4 core count. The fixed CUDART static linking banner does not describe this executable's libcumetal.dylib link."
+  },
+  "vector_add": {
+    "status": "passed_upstream_numerical_check_with_generic_ptx_apple_gpu_trace",
+    "elements": 50000,
+    "upstream_absolute_tolerance": 0.00001,
+    "maximum_error_reported": null,
+    "numerical_evidence": "Upstream Test PASSED marker; the sample does not print maximum error.",
+    "launch_syntax": "Unmodified CUDA __global__ kernel and <<<>>> launch in the pinned vectorAdd.cu source.",
+    "validated_launches": 1,
+    "traces": [
+      {
+        "event": "kernel_launch",
+        "kernel": "_Z9vectorAddPKfS0_Pfi",
+        "source": "generic_ptx",
+        "provenance": "generic_ptx_lowering",
+        "semantic_quality": "exact",
+        "device": "apple_gpu",
+        "device_name": "Apple M4",
+        "math_mode": "safe",
+        "compile_cache_hit": "false",
+        "launch_success": "true",
+        "duration_ns": "9750",
+        "grid": "(196,1,1)",
+        "block": "(256,1,1)",
+        "unsupported_reason": ""
+      }
+    ],
+    "timing_boundary": "The 9750 ns trace duration is a single GPU dispatch, not end-to-end runtime, an independently repeated timing, or CPU speedup."
+  },
+  "matmul": {
+    "status": "passed_bounded_contract_and_measurement",
+    "source": "demos/matmul/kernels.cu",
+    "host": "demos/matmul/main.cpp",
+    "compile_path": "Existing tools/matmul_bench/run.sh invokes cumetalc --backend=cumetal-ir --emit=metallib --no-link and builds the benchmark host; it does not reconfigure or rebuild the core compiler/runtime.",
+    "launch_path": "Source-compiled metallib launched through CuMetal's explicit kernel API, not native CUDA <<<>>> launch-stub generation.",
+    "metallib_validation": {
+      "result": "PASS",
+      "kernel_count": 16,
+      "compile_log": "local/out/cuda-proof-2026-10-10/matmul/compile.log"
+    },
+    "input_contract": {
+      "dtype": "FP32",
+      "M": 2048,
+      "K": 2048,
+      "N": 2048,
+      "operations_per_multiply": 17179869184,
+      "seed": 20260906,
+      "input_distribution": "std::mt19937 with uniform_real_distribution<float>(-1, 1)",
+      "alpha": 1,
+      "beta": 0,
+      "reference": "Accelerate cblas_sgemm with the same FP32 inputs; 64 reference dot products additionally checked using double accumulation.",
+      "output_check": "Every final output element must be finite and satisfy abs(output-reference) <= 2e-5*K + 2e-4*abs(reference). NaN sentinel initialization helps expose missing stores.",
+      "output_check_scope": "One full final-buffer check for each GPU variant/round, after warmups and timed calls; not a separately retained output check for every timed iteration."
+    },
+    "contract": {
+      "shapes": [
+        [
+          64,
+          32,
+          48
+        ],
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          17,
+          19,
+          23
+        ],
+        [
+          65,
+          37,
+          49
+        ],
+        [
+          33,
+          36,
+          52
+        ],
+        [
+          129,
+          67,
+          131
+        ]
+      ],
+      "source_kernel_variants": 16,
+      "result_rows": 110,
+      "gpu_output_checks": 104,
+      "compiled_source_output_checks": 92,
+      "native_library_output_checks": 12,
+      "cpu_reference_timing_rows": 6,
+      "max_abs_error": 0,
+      "max_relative_l2_error": 0,
+      "expected_vector_alignment_exclusions": 4,
+      "negative_argument_cases": 3,
+      "negative_argument_scope": "The passing test.sh gate requires refusal of unaligned vectorized shape, zero dimension and unknown variant. Four unsafe vectorized shapes are deliberately excluded in the all-variant positive sweep; they are not counted as passed executions.",
+      "trace_records": 0,
+      "scope": "110 result rows are benchmark checks/timing rows, not 110 independent unit tests or traced GPU launches."
+    },
+    "trace_run": {
+      "validated_launches": 3,
+      "shape": [
+        2048,
+        2048,
+        2048
+      ],
+      "variant": "block64_32",
+      "warmup_calls": 2,
+      "timed_calls": 1,
+      "max_abs_error": 0,
+      "relative_l2_error": 0,
+      "bad_elements": 0,
+      "traces": [
+        {
+          "event": "kernel_launch",
+          "kernel": "block64_32",
+          "source": "metallib",
+          "provenance": "precompiled_metallib",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M4",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "false",
+          "launch_success": "true",
+          "duration_ns": "22522250",
+          "grid": "(32,32,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "block64_32",
+          "source": "metallib",
+          "provenance": "precompiled_metallib",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M4",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "true",
+          "launch_success": "true",
+          "duration_ns": "14349124",
+          "grid": "(32,32,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        },
+        {
+          "event": "kernel_launch",
+          "kernel": "block64_32",
+          "source": "metallib",
+          "provenance": "precompiled_metallib",
+          "semantic_quality": "exact",
+          "device": "apple_gpu",
+          "device_name": "Apple M4",
+          "math_mode": "precompiled",
+          "compile_cache_hit": "true",
+          "launch_success": "true",
+          "duration_ns": "12643750",
+          "grid": "(32,32,1)",
+          "block": "(256,1,1)",
+          "unsupported_reason": ""
+        }
+      ],
+      "timing_use": "This trace-enabled run proves bounded execution and numerics; its wall times are excluded from the headline measurement."
+    },
+    "measurement": {
+      "rounds": 3,
+      "variants": 9,
+      "rows": 27,
+      "timed_iterations_per_variant_per_round": 5,
+      "total_timed_calls": 135,
+      "gpu_output_checks": 24,
+      "max_abs_error": 0,
+      "max_relative_l2_error": 0,
+      "results": {
+        "mps": {
+          "round_mean_ms": [
+            6.255283,
+            6.211233,
+            6.016725
+          ],
+          "median_of_round_means_ms": 6.211233,
+          "gflops_from_median_round_mean": 2765.935392216006,
+          "speed_ratio_vs_accelerate": 1.5050058498852,
+          "speed_ratio_vs_mps": 1,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "naive": {
+          "round_mean_ms": [
+            62.98455,
+            63.15285,
+            63.09545
+          ],
+          "median_of_round_means_ms": 63.09545,
+          "gflops_from_median_round_mean": 272.2838046800522,
+          "speed_ratio_vs_accelerate": 0.14815556430772742,
+          "speed_ratio_vs_mps": 0.09844185278019255,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "coalesced": {
+          "round_mean_ms": [
+            52.514725,
+            52.264516,
+            52.538816
+          ],
+          "median_of_round_means_ms": 52.514725,
+          "gflops_from_median_round_mean": 327.1438474446929,
+          "speed_ratio_vs_accelerate": 0.17800611161916968,
+          "speed_ratio_vs_mps": 0.11827602639069328,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "tiled": {
+          "round_mean_ms": [
+            33.604758,
+            33.782008,
+            33.572075
+          ],
+          "median_of_round_means_ms": 33.604758,
+          "gflops_from_median_round_mean": 511.2332361982788,
+          "speed_ratio_vs_accelerate": 0.27817316821623894,
+          "speed_ratio_vs_mps": 0.18483195147544287,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "registers": {
+          "round_mean_ms": [
+            17.906008,
+            17.565858,
+            17.8305
+          ],
+          "median_of_round_means_ms": 17.8305,
+          "gflops_from_median_round_mean": 963.5102315695017,
+          "speed_ratio_vs_accelerate": 0.5242669583017863,
+          "speed_ratio_vs_mps": 0.34834878438630434,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "vectorized": {
+          "round_mean_ms": [
+            19.704642,
+            19.810025,
+            19.700508
+          ],
+          "median_of_round_means_ms": 19.704642,
+          "gflops_from_median_round_mean": 871.8691354047437,
+          "speed_ratio_vs_accelerate": 0.4744030366042682,
+          "speed_ratio_vs_mps": 0.3152167392840733,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "block64_32": {
+          "round_mean_ms": [
+            12.918817,
+            13.050625,
+            12.914783
+          ],
+          "median_of_round_means_ms": 12.918817,
+          "gflops_from_median_round_mean": 1329.833001272485,
+          "speed_ratio_vs_accelerate": 0.7235911771178428,
+          "speed_ratio_vs_mps": 0.4807896109992114,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "cublas_mps": {
+          "round_mean_ms": [
+            5.766292,
+            5.6412,
+            5.633067
+          ],
+          "median_of_round_means_ms": 5.6412,
+          "gflops_from_median_round_mean": 3045.428133021343,
+          "speed_ratio_vs_accelerate": 1.6570839537687014,
+          "speed_ratio_vs_mps": 1.1010481812380344,
+          "max_abs_error": 0,
+          "max_relative_l2_error": 0
+        },
+        "accelerate": {
+          "round_mean_ms": [
+            9.347942,
+            9.274725,
+            9.401267
+          ],
+          "median_of_round_means_ms": 9.347942,
+          "gflops_from_median_round_mean": 1837.823681832857,
+          "speed_ratio_vs_accelerate": 1,
+          "speed_ratio_vs_mps": 0.6644492445502979,
+          "max_abs_error": null,
+          "max_relative_l2_error": null
+        }
+      },
+      "shape": [
+        2048,
+        2048,
+        2048
+      ],
+      "warmups_per_variant_round": 2,
+      "timed_calls_by_category": {
+        "compiled_cuda": 90,
+        "native_mps_or_cublas_mps": 30,
+        "accelerate_cpu_side": 15
+      },
+      "round_order": [
+        "mps naive coalesced tiled registers vectorized block64_32 cublas_mps accelerate",
+        "tiled registers vectorized block64_32 cublas_mps accelerate mps naive coalesced",
+        "block64_32 cublas_mps accelerate mps naive coalesced tiled registers vectorized"
+      ],
+      "timing_scope": "Synchronized host wall time, including launch/encode and wait. Allocation, transfers, source compilation and pipeline warmup are excluded. Trace-disabled timing runs are separate from provenance.",
+      "headline_statistic": "Median of the three round mean times, each mean from five timed calls; not the median of all individual samples.",
+      "ratio_definition": "speed_ratio_vs_baseline = baseline median-of-round-means time / variant median-of-round-means time. Greater than 1 is faster; less than 1 is slower.",
+      "trace_records": 0,
+      "audit": "All 27 JSON rows matched their individual round logs, shape and iteration count. Exactly three rounds per variant; finite positive times, bounded ordering and recomputed GFLOP/s checked.",
+      "cpu_baseline_boundary": "Accelerate is an optimized CPU-side library whose internal acceleration choices were not profiled; it is not a scalar loop or algorithm-matched CPU implementation. Equal inputs, dtype and operation do not imply equal algorithm or operation order.",
+      "native_library_boundary": "mps is direct Metal Performance Shaders; cublas_mps is CuMetal's existing explicit cuBLAS-to-MPS call. These paths are not compiled-CUDA kernel performance. Timed logs have no per-kernel provenance records.",
+      "conclusion": "The compiled block64_32 kernel is numerically correct here but slower than both optimized Accelerate and direct MPS. The separate cuBLAS-to-MPS path is faster than Accelerate in this bounded measurement. No broad or cross-device speedup claim."
+    }
+  },
+  "provenance_audit": {
+    "evidence_kind": "Runtime-emitted Metal completion/provenance records, not an independent external GPU-profiler capture. Numerical checks, retained source/binary identity and these records jointly support the bounded execution claim.",
+    "trace_markers": 4,
+    "validated_exact_completed_apple_m4_launches": 4,
+    "invalid_records": 0,
+    "source_provenance_counts": {
+      "generic_ptx/generic_ptx_lowering": 1,
+      "metallib/precompiled_metallib": 3
+    },
+    "validation": "All CUMETAL_PROVENANCE records structurally parsed using shell quoting; duplicate/empty keys and malformed fields rejected. Required kernel_launch, exact, apple_gpu, Apple M4, true success, empty unsupported_reason, positive integer duration, nonempty kernel/math mode, boolean cache hit, and positive 3D grid/block values.",
+    "source_boundary": "Generic-PTX provenance identifies vectorAdd's lowering path. Precompiled-metallib provenance proves execution of the retained matmul artifact, not source-lowering identity by itself; source/build-script/compile-log/metallib hashes provide that separate evidence.",
+    "quality_boundary": "semantic_quality=exact is runtime classification, not an independent numerical oracle. No GPU execution is inferred from API names, host-side PASS, or process exit alone."
+  },
+  "limitations": [
+    "Bounded samples and matrix shapes on this Apple M4 only, not the full cuda-samples suite or a general CUDA compatibility percentage.",
+    "Not native NVIDIA SASS/cubin execution, a general PyTorch CUDA backend, or full CUDA library parity.",
+    "Not native Omniverse, RTX/OptiX, Isaac Sim, or full OpenFPM qualification. No OpenFPM workload was downloaded, built or run in this proof.",
+    "No scalar or algorithm-matched CPU speedup was measured; no claim of universal speedup over optimized CPU libraries.",
+    "Timing is warm compute-path wall time, not cold startup or transfer-inclusive application latency.",
+    "Historical M4 Pro measurements remain separate; no new cross-device qualification.",
+    "No compiler/runtime source change or new full CTest run is claimed by this evidence-only proof."
+  ],
+  "identity_capture": {
+    "captured_at_utc": "2026-10-10T07:34:55.436230+00:00",
+    "phase": "post_completed_proof_on_disk",
+    "boundary": "Hashes identify retained on-disk logs, source fixtures and components after the completed runs; not process-memory or prelaunch attestation."
+  },
+  "artifact_sha256": {
+    "local/out/cuda-proof-2026-10-10/deviceQuery": "ce344e446ec55bb481bea56d45ec541564efc63213fd068006796008492f6cf7",
+    "local/out/cuda-proof-2026-10-10/deviceQuery.log": "1997c807f8b4598e4f4803b69046e865c715dd19a18ee60d926eda38d55b4caa",
+    "local/out/cuda-proof-2026-10-10/matmul/compile.log": "c192c904f4735f343a95249557ecaf4a0f8a7e5094fa5706022d5d941d5f0558",
+    "local/out/cuda-proof-2026-10-10/matmul/kernels.metallib": "86f82320e576b9371def736fc955e30c20afcfb2cfcc3e0e909912d7630da55b",
+    "local/out/cuda-proof-2026-10-10/matmul/kernels.metallib.cumetal-abi": "7a2c4e5ca8a1c1367ec7b0fab9ea0a670b81d53aa39dce4526ca439764d4f571",
+    "local/out/cuda-proof-2026-10-10/matmul/matmul_bench": "308f93174b98a1285564934235ea70eb7b21b385ce7c9976892860493c6631c7",
+    "local/out/cuda-proof-2026-10-10/matmul-contract.log": "62371410ff19ec71cb39493861edd0b962f2b79848f7a5dee4a727dcd7833b37",
+    "local/out/cuda-proof-2026-10-10/matmul-gpu-trace.log": "010be6a459030401fea06fd047d2e0aaedd365987bff5ba3fc3302c081a9619e",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/results.json": "68cff91611bc089150561e30a64b489eb0ac20bf0757002cd30557345c1d27ff",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-accelerate.log": "78e0db2072d1a76c6f9cb948a329067d9db50859d942d46106364f593dc50ea0",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-block64_32.log": "4202f350e0e8be4466548f6c7ab42f9c037cbe0ef12df2cd80b462e412e94e70",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-coalesced.log": "948d12f6f66184a672bc95dc9508e66e57af7e6ec830f90020af700885244ad7",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-cublas_mps.log": "3e1395931ae1c2060c4c7301801ae283c93b8a2c32eea794daebec61ac85583d",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-mps.log": "478bb5afa17c351d9c9bb9186c39aaae6394c47680b8b4acf1659600ab769604",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-naive.log": "8889e53135b80c7e0a349235a8a39c61d4a161b7c4aa30d7f47a64990bbaf201",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-registers.log": "e83915ba68fdc92c36782b1098b4bf87497ee7b6055634fa9a4bc8ddb2bb8413",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-tiled.log": "108a5f9cf321783eac7c907ce94d3220d23a4f5e17e1bfc3d106e87aa85a8cff",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round1-vectorized.log": "f58937ec71221be41d940dd5f6e64ffe52a2a0726592743b9aede6816ec1dbe7",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-accelerate.log": "e7a261b1ef42a060f55e53db418ee906693384411148ce9455bf6c8a347e2985",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-block64_32.log": "f44840ac06dbc5640c289fd0774c03679220c33cd61cec4962681aa33fb0f92e",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-coalesced.log": "d9f8501e70c58a47a6bd88ecf4e2c6b1459c4bf85c426a6a1ad346ecfe88e2ae",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-cublas_mps.log": "e4c6907a443beac4063adc6c4e78024c111258484a4d674e0d1447647983802f",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-mps.log": "7f336216e9a76c9d21f010861fdaaf0ac63e3b3311f2f8738c13383fc5d9373f",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-naive.log": "d18e76272add30765503b9f7a1b782afc1ab3be93dc251f4e8c9f2270794052d",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-registers.log": "82526740ca765be59d2e249c338dd2d1dc421409a946dcb4cba6efcd76371860",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-tiled.log": "87fe86b080216531219b64488a8396a999082cbcc5aa759edcd5dc11060ab94d",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round2-vectorized.log": "b6ddc7bb39b8d995103a36a98c17a0c4f697b7bd6608b235b05d3ec2fc2ce14f",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-accelerate.log": "789ed7e27491821cf533db113ff238b381ab5c440932e6008c711cad6ec7b704",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-block64_32.log": "4fc2a5c85d6ca42484edcd81318f0dbc7fafcbc2bc09846029e24dd57e411d2b",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-coalesced.log": "dd938757dbd65047ee336a2bacdf1a4882a3f40eb4901c21a1ce907a67351054",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-cublas_mps.log": "145bcf7932d66a9814cac76a016c9942e4a79843bffd811e5eb6794e1454597c",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-mps.log": "cf147baac9740b10da811674d13e7a191ad37a0a96cd756d1208eba5d6865ef9",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-naive.log": "1c5c5190731144c0580d526a5812d2666523dc260183e32636e214cef8ecbab1",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-registers.log": "ad407c192371096e41528010c0c90f58ec13bdf6b885a23c7d970dd47391340e",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-tiled.log": "6a1459b39d614a1eb1a00e1fec9ea301ac849ff047d5ac782edb29a72616c504",
+    "local/out/cuda-proof-2026-10-10/matmul-measure/round3-vectorized.log": "25c02c0a10636ef544db2f2126743dcacf81818e82774ffda36513a611beeccd",
+    "local/out/cuda-proof-2026-10-10/matmul-measure.log": "49913e4e3d4110b67cb5b5762aa7d1d22e7854dceae4fd66ca0081a46a22363e",
+    "local/out/cuda-proof-2026-10-10/vectorAdd.log": "aeeed10227d671fba8ffc3b89dea5d218b3ae3e310b9e432e35ed281065d5b3d",
+    "local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Common/helper_cuda.h": "2bf5b66851d6ea49ee0d8e960fb58dbabfc117a6a0b034d084392bfd08a6c2cb",
+    "local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Common/helper_string.h": "616ac8b2588a6e73aed207f85faf0da5e617404390df1790f6637b1042dbcc94",
+    "local/out/cuda-proof-2026-10-10/vendor/cuda-samples/LICENSE": "b3e40c5bfed1fca5c62d2c1f2208bf51f8d2c910219f94c443f657ace9001be3",
+    "local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Samples/0_Introduction/vectorAdd/vectorAdd.cu": "9a156c7c4f1ab0759d859af95c8dab55f2280d867edca7daee4546d63effb583",
+    "local/out/cuda-proof-2026-10-10/vendor/cuda-samples/Samples/1_Utilities/deviceQuery/deviceQuery.cpp": "7b7a761007477cef62b74b132f6fae7f9216aa1311bad56c360387afc9805ffc"
+  },
+  "execution_component_sha256": {
+    "build/cumetalc": "feb9e65eee96b77b67d6276e611941dadb9760d84f70d23d7f3b94f2b478d186",
+    "build/libcumetal.dylib": "eea80453da637da90ab1c9a0b7be45b96b5a95486b5de802779886fcc875a3c9",
+    "tests/cuda_projects/cuda_samples_vectoradd/build/vectorAdd": "6ee647b7b6666588a82a7f6d57a2f7dbd7ca17a0ba3ba4215d11205b63985e49",
+    "tests/cuda_projects/cuda_samples_vectoradd/build.sh": "3f0121411a768a46a2c004a1c7810782334c28774a3023b002d65b8bee8c943c",
+    "tests/cuda_projects/run_cuda_samples_vectoradd_gpu.sh": "399f59af67d2d931a2a9933e6ffed81501001a3f913d8d20e519aecc57239916",
+    "demos/matmul/kernels.cu": "aa3efcd996ee87595da2260d8057c2c4c30af268ca11639b3b8caf80a89a8f01",
+    "demos/matmul/main.cpp": "eb326e6e34d8d91bd680fc0ff48c45201aa5640ee2904380f01608b916020eb3",
+    "runtime/metal_backend/matmul_bench_reference.mm": "8044420bbe5d2ecdbb936fb72ef8f5a4c9673bf6aa39b5a90048603ae496eeda",
+    "tools/matmul_bench/test.sh": "743be1607490eae9ea688ec879c4829a89634950eb44cbbf2a94a4d3fa83f21f",
+    "tools/matmul_bench/run.sh": "5da7bd76328cf144472ae3cfc1983a0d819171906987dece52ad37320a16a563",
+    "tools/matmul_bench/measure.py": "ffe2b2c0f19b3606cbd2633483c91806405e2da446ed5b0b6d885132bb68e0f9",
+    "demos/matmul/report.py": "c838df8d97897e7615672c87de6e10873b9b4c22e1ef695bf94512dbacf5cb9e"
+  }
+}

@@ -70,6 +70,15 @@ The trace also identifies the Apple GPU and successful kernel completion.
 For another source file, use `./cuda-mac compile your-file.cu -o your-program`.
 Keep the checkout in place: compiled programs link to its local runtime.
 
+The [official-source proof record](local/verification/2026-10-10/CUDA-PROOF.md)
+adds unmodified NVIDIA cuda-samples v12.8 on M4: `vectorAdd` checks 50,000
+outputs with a completed Apple-GPU launch, and `deviceQuery` reports Apple M4
+and `Result = PASS`. The latter is API reporting only, not kernel execution or
+literal NVIDIA hardware specifications. A separate 2048-cubed CUDA matrix
+benchmark verifies every output; its measured 12.92 ms is slower than optimized
+Accelerate (9.35 ms) and native MPS (6.21 ms). Commands, pins, timing scope, and
+evidence hashes are retained in the record.
+
 ## Verified on M1 and M4
 
 | CUDA workload | Checked locally |
