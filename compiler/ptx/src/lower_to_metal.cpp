@@ -3498,13 +3498,37 @@ LowerToMetalResult lower_ptx_to_metal_source(std::string_view ptx, const LowerTo
             result.error = compiled.error;
             return result;
         }
-        if (compiled.gpu_ir.functions.empty()) {
-            result.error = "CuMetal IR backend produced no kernel functions";
+        const auto kernel = std::find_if(
+            compiled.gpu_ir.functions.begin(), compiled.gpu_ir.functions.end(),
+            [&](const auto& function) {
+                return function.is_kernel && function.kernel_abi.has_value() &&
+                    (options.entry_name.empty() || function.name == options.entry_name);
+            });
+        if (kernel == compiled.gpu_ir.functions.end()) {
+            result.error = "CuMetal IR backend produced no selected kernel ABI";
             return result;
         }
         result.ok = true;
         result.matched = true;
-        result.entry_name = compiled.gpu_ir.functions.front().name;
+        result.entry_name = kernel->name;
+        const auto& abi = *kernel->kernel_abi;
+        for (std::size_t index = 0; index < abi.arguments.size(); ++index) {
+            const auto& argument = abi.arguments[index];
+            const bool has_hidden_binding = std::any_of(
+                abi.bindings.begin(), abi.bindings.end(), [&](const auto& binding) {
+                    return binding.logical_argument_index == index &&
+                        binding.hidden_role.has_value();
+                });
+            if (argument.hidden_role.has_value() || has_hidden_binding ||
+                argument.kind == cumetal::ir::ArgumentKind::kDynamicThreadgroupMemory) continue;
+            result.arguments.push_back({
+                .is_pointer = argument.kind == cumetal::ir::ArgumentKind::kPointer,
+                .size_bytes = argument.size,
+                .is_aggregate = argument.kind == cumetal::ir::ArgumentKind::kAggregate ||
+                    argument.type.kind == cumetal::ir::TypeKind::kAggregate,
+            });
+        }
+        result.argument_metadata_valid = true;
         result.lowering_kind = MetalLoweringKind::kGenericCumetalIr;
         result.printf_formats = compiled.printf_formats;
         const auto& caveats = compiled.gpu_ir.semantic_caveats;
@@ -3524,9 +3548,26 @@ LowerToMetalResult lower_ptx_to_metal_source(std::string_view ptx, const LowerTo
         result.error = pipeline.error;
         return result;
     }
+    if (std::any_of(pipeline.parameters.begin(), pipeline.parameters.end(),
+                    [](const auto& parameter) {
+                        return parameter.type == ".f16" && !parameter.is_pointer &&
+                            !parameter.is_aggregate;
+                    })) {
+        result.error = "legacy PTX lowering does not support scalar .f16 kernel parameters; "
+                       "use the cumetal-ir backend for the two-byte ABI";
+        return result;
+    }
 
     result.entry_name = pipeline.entry_name;
     result.warnings = pipeline.warnings;
+    for (const auto& parameter : pipeline.parameters) {
+        result.arguments.push_back({
+            .is_pointer = parameter.is_pointer,
+            .size_bytes = static_cast<std::uint32_t>(parameter.is_pointer ? 8 : parameter.byte_size),
+            .is_aggregate = !parameter.is_pointer && parameter.is_aggregate,
+        });
+    }
+    result.argument_metadata_valid = true;
     // This metadata belongs to the PTX kernel ABI, independent of whether the
     // direct-MSL body matches. The registration JIT also uses this result when
     // an LLVM-produced metallib is loaded from the persistent cache.
@@ -3618,6 +3659,10 @@ LowerToMetalResult lower_ptx_to_metal_source(std::string_view ptx, const LowerTo
         } else if (!specialization.empty()) {
             metal_source = std::move(specialization);
             lowering_kind = MetalLoweringKind::kSpecializedMsl;
+            // Opt-in templates may have a different signature from placeholder
+            // PTX, so its inferred argument metadata is not authoritative.
+            result.arguments.clear();
+            result.argument_metadata_valid = false;
         }
     }
 

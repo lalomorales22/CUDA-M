@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cumetal/common/air_target.h"
+#include "cumetal/ptx/argument_metadata.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -69,6 +70,8 @@ struct LowerToLlvmResult {
     bool uses_atomic_lock_bank = false;
     std::string entry_name;
     std::string llvm_ir;
+    bool argument_metadata_valid = false;
+    std::vector<ArgumentMetadata> arguments;
     // Device printf uses two hidden kernel arguments (ring buffer and capacity).
     // The runtime drains records using this format-id table.
     std::vector<std::string> printf_formats;

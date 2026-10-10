@@ -17,6 +17,53 @@ generates the CuMetal CUDA toolkit shim, and compiles `libwarp`'s CUDA sources
 through it. Pass `--clone-only` to stop after patching, or `--build` to hand
 off to Warp's own `build_lib.py`.
 
+## Build Without Extra Downloads
+
+The `--build` path defaults to `CUMETAL_WARP_STANDALONE=0` and passes both
+`--no-standalone` and `--no-use-libmathdx`. It uses an existing Python
+interpreter and its installed dependencies; this wrapper does not install
+Python packages. The default builds Warp's native CUDA library but does not
+build `warp-clang`, so Warp CPU kernel JIT is unavailable in a fresh checkout.
+CUDA device testing is separate from CPU JIT support. An existing stale
+`warp-clang` library is not deleted by this option.
+
+For example, after provisioning the existing interpreter and NumPy:
+
+```bash
+CUMETAL_WARP_DIR=/path/to/warp-cumetal \
+CUMETAL_PYTHON=/path/to/existing/python \
+CUMETAL_JOBS=2 \
+bash scripts/build_warp_cumetal.sh --build
+```
+
+Standalone CPU JIT is an explicit opt-in and requires an existing LLVM prefix:
+
+```bash
+CUMETAL_WARP_STANDALONE=1 \
+CUMETAL_WARP_LLVM_PATH=/path/to/existing/llvm \
+CUMETAL_PYTHON=/path/to/existing/python \
+bash scripts/build_warp_cumetal.sh --build
+```
+
+The wrapper validates `CUMETAL_WARP_STANDALONE` as exactly `0` or `1` before
+cloning or patching. With `1`, the LLVM path must already contain `include/`
+and `lib/`; it is passed explicitly as `--llvm-path` so Warp does not use its
+default Packman LLVM download. This validates the local prefix layout, not
+LLVM version or link compatibility, which Warp's build must still establish.
+The canonical LLVM prefix may contain only ASCII letters, digits, `_`, `.`,
+`/`, `+`, or `-`. Spaces and shell metacharacters are rejected before fetching:
+although this wrapper preserves structured arguments, pinned Warp constructs
+shell commands from the LLVM include/library paths internally.
+Setting an LLVM path with standalone disabled is rejected rather than ignored.
+The source checkout is still cloned when missing; reuse a previously patched
+checkout to avoid that initial source download too.
+
+The CPU-only wrapper contract test mocks all external commands:
+
+```bash
+python3 tests/unit/check_warp_build_contract_test.py scripts/build_warp_cumetal.sh
+```
+
 To patch a checkout you already have:
 
 ```bash

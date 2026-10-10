@@ -18,6 +18,14 @@ The [NVIDIA workload ledger](nvidia-workloads.md) separates source-level PhysX
 testing from native Omniverse/Isaac Sim compatibility. CUDA translation does
 not supply their OS ABI or NVIDIA RTX renderer.
 
+The [pinned Warp integration](warp-feasibility.md) passes selected upstream
+modules, including vector assignment/backward after a 64-bit registration
+argument fix. Full-suite compatibility is not established: 45-argument kernels
+exceed the 31-binding limit, typed dynamic `vprintf` paths refuse compilation,
+and optional driver entry points remain missing. Some upstream tests report
+success after a failed build without executing kernels; test counts alone are
+not GPU correctness evidence. The minimal build omits Warp CPU JIT.
+
 The [PhysX lab](../demos/physx-lab/README.md) adds all-13-component CPU/GPU
 comparisons to three bounded scenes. A separate 60-step mesh-friction capture
 fails angular-velocity (`wz`) parity at step 22 on M4 (relative `3e-3`, absolute

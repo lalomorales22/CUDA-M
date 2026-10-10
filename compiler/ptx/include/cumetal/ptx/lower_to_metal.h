@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cumetal/ptx/argument_metadata.h"
+
 #include <string>
 #include <string_view>
 #include <vector>
@@ -41,6 +43,9 @@ struct LowerToMetalResult {
     MetalLoweringKind lowering_kind = MetalLoweringKind::kNone;
     std::string entry_name;
     std::string metal_source;
+    // Valid for zero-argument kernels too, and for legacy LLVM fallback results.
+    bool argument_metadata_valid = false;
+    std::vector<ArgumentMetadata> arguments;
     // printf metadata: if the kernel uses device printf, the compiler injects a hidden
     // ring-buffer argument (spec §5.3).  printf_formats[i] is the format string for id i.
     std::vector<std::string> printf_formats;

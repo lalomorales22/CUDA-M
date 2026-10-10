@@ -6490,7 +6490,7 @@ cudaError_t cudaLaunchKernel(const void* func,
 
             cumetal::rt::AllocationTable::ResolvedAllocation resolved;
             if (!state.allocations.resolve(device_ptr, &resolved)) {
-                if (use_registered_kernel) {
+                if (use_registered_kernel && !registered_kernel.argument_metadata.has_value()) {
                     std::uintptr_t raw_value = 0;
                     std::memcpy(&raw_value, args[i], sizeof(raw_value));
                     // PTX param inference can over-classify some unannotated .u64 scalars
@@ -6543,7 +6543,13 @@ cudaError_t cudaLaunchKernel(const void* func,
             arg.kind = cumetal::metal_backend::KernelArg::Kind::kBytes;
             arg.bytes.resize(info.size_bytes);
             std::memcpy(arg.bytes.data(), args[i], info.size_bytes);
-            relocate_embedded_device_pointers(&arg.bytes, &resident_buffers);
+            // Compiler-known scalar values are opaque bits, even when those
+            // bits happen to equal a tracked device address.
+            if (!use_registered_kernel || !registered_kernel.argument_metadata.has_value() ||
+                (i < registered_kernel.argument_metadata->size() &&
+                 (*registered_kernel.argument_metadata)[i].is_aggregate)) {
+                relocate_embedded_device_pointers(&arg.bytes, &resident_buffers);
+            }
             launch_args.push_back(std::move(arg));
         }
     }

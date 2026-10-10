@@ -112,6 +112,14 @@ calls and source-compiled CUDA softmax, without allocating the full score matrix
 Earlier small-resolution videos remain distorted; their
 [quality investigations](local/verification/2026-10-09/COSMOS-QUALITY.md) are retained.
 
+The [pinned NVIDIA Warp integration](docs/warp-feasibility.md) passes 25 selected
+upstream tests across 10 modules on M4, with 44 validated GPU launches recorded
+separately from the test outcomes. This includes the previously failing
+three-test vector assignment/copy module. A registration fix preserves 64-bit
+scalar fill values instead of mistaking them for pointers, with cold/warm-cache
+and invalid-pointer regressions on both PTX backends. The full Warp suite remains
+unsupported, including large kernel argument lists and some device-printing paths.
+
 ## PhysX on Metal
 
 The [local PhysX lab](demos/physx-lab/README.md) runs three bounded, patched-source

@@ -2,9 +2,11 @@
 
 #include "cuda_runtime.h"
 #include "metal_backend.h"
+#include "cumetal/ptx/argument_metadata.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -30,6 +32,8 @@ struct RegisteredKernel {
     std::string kernel_name;
     std::vector<cumetalKernelArgInfo_t> arg_info;
     bool arg_info_resolved = false;
+    // Present only for PTX JIT artifacts whose compiler-produced ABI is known.
+    std::optional<std::vector<cumetal::ptx::ArgumentMetadata>> argument_metadata;
     // Device printf format table (spec §5.3): non-empty iff kernel uses printf.
     // printf_formats[i] is the format string for format id i.
     std::vector<std::string> printf_formats;

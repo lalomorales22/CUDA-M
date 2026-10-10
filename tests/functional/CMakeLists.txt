@@ -515,6 +515,10 @@ if(CUMETAL_ENABLE_CUDA_REGISTRATION)
         runtime_registration_loop_backedge_join_test.cpp
     )
 
+    add_executable(cumetal_runtime_registration_scalar64_test
+        runtime_registration_scalar64_test.cpp
+    )
+
     add_executable(cumetal_runtime_registration_printf_test
         runtime_registration_printf_test.cpp
     )
@@ -1272,6 +1276,11 @@ if(CUMETAL_ENABLE_CUDA_REGISTRATION)
     )
 
     target_link_libraries(cumetal_runtime_registration_loop_backedge_join_test
+        PRIVATE
+            cumetal_runtime
+    )
+
+    target_link_libraries(cumetal_runtime_registration_scalar64_test
         PRIVATE
             cumetal_runtime
     )
@@ -3509,14 +3518,15 @@ add_test(
 
 add_test(
     NAME functional_runtime_rope_neox
-    COMMAND bash
-            ${CMAKE_CURRENT_SOURCE_DIR}/run_driver_module_load_data_ptx.sh
+    COMMAND ${CUMETAL_TRACE_PYTHON3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/run_runtime_rope_neox.py
             $<TARGET_FILE:cumetal_runtime_rope_neox_test>
             ${CMAKE_CURRENT_SOURCE_DIR}/reference/rope_neox.ptx
 )
 
 set_tests_properties(functional_runtime_rope_neox PROPERTIES
     SKIP_RETURN_CODE 77
+    TIMEOUT 180
     ENVIRONMENT "CUMETAL_ENABLE_WORKLOAD_SPECIALIZATIONS=1"
 )
 
@@ -3616,6 +3626,15 @@ if(CUMETAL_ENABLE_CUDA_REGISTRATION)
 
     set_tests_properties(functional_runtime_registration_loop_backedge_join
         PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 180)
+
+    add_test(
+        NAME functional_runtime_registration_scalar64
+        COMMAND ${CUMETAL_TRACE_PYTHON3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/run_runtime_registration_scalar64.py
+                $<TARGET_FILE:cumetal_runtime_registration_scalar64_test>
+    )
+    set_tests_properties(functional_runtime_registration_scalar64
+        PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 300)
 
     add_test(
         NAME functional_runtime_registration_jit_cache

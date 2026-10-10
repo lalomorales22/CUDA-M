@@ -1,4 +1,41 @@
-# NVIDIA Warp on CuMetal: Phase 0 feasibility audit
+# NVIDIA Warp on CuMetal
+
+## M4 Follow-Up: 2026-10-09/10
+
+The pinned v1.12.0 checkout now builds on M4 with the existing CuMetal patch
+series and no additional Python packages or downloaded LLVM. The build uses
+`--no-standalone`, so CPU JIT is unavailable. See the
+[build instructions](../scripts/warp-patches/README.md) and
+[security review](../local/verification/2026-10-09/WARP-SECURITY.md).
+
+Real upstream testing exposed a registration bug: the native 64-bit memory-fill
+kernel's scalar value was classified as a device pointer. Generic registration JIT now
+uses the selected compiler backend's actual argument metadata, including on
+warm cache hits. Scalar values retain their bits, while compiler-known pointers
+still require tracked allocations. Both PTX backends have positive, invalid
+pointer, and corrupt-cache regressions. Native/AOT fallback behavior and the
+separate opt-in workload-template ABI remain unchanged.
+The final selected replay passes **25 tests across 10 modules**, with **44
+validated Apple M4 GPU launches** audited separately. The previously failing
+`test_vec_assign_copy` module now passes **3/3**, including the vector slicing
+backward test. Modules without launches provide API/host-side evidence only.
+
+This does not qualify the complete Warp suite. The full vector module still
+contains 45-argument backward kernels that exceed the current 31 Metal binding
+slots. The conditional module encounters `typed vprintf requires a constant
+format string`; some later unittest cases report success without launching a
+kernel after the failed build. Unittest results and actual GPU evidence must
+therefore remain separate. Optional graph/capture, graphics, IPC, and array
+driver entry points also remain unavailable.
+
+The hardened `scripts/run_warp_tests_cumetal.sh` runs each selected module in
+a bounded process group and writes structured results to a new output directory.
+Failures, crashes, timeouts, zero tests, skips, and missing receipts are nonzero
+outcomes. Those receipts do not themselves prove GPU execution. Start with
+explicitly selected modules rather than an unbounded whole-suite run.
+See [dated measurements and reproduction commands](../local/verification/2026-10-09/WARP.md).
+
+## Historical Phase 0 Audit
 
 Date: 2026-09-01
 

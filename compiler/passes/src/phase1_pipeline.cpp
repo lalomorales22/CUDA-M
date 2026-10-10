@@ -63,6 +63,7 @@ Phase1PipelineOutput run_phase1_pipeline(std::string_view ptx, const Phase1Pipel
         entry = &parsed.module.entries.front();
     }
     out.entry_name = entry->name;
+    out.parameters = entry->params;
 
     IntrinsicLowerOptions intrinsic_options;
     intrinsic_options.strict = options.strict;

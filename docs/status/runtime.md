@@ -42,6 +42,14 @@ launch success. CPU or approximate paths must identify themselves.
 ## Compatibility surfaces
 
 - Source registration remains enabled independently of the binary alias.
+- Generic registration PTX JIT publishes compiler-produced argument kinds and sizes
+  for both legacy and typed backends, including validated persistent-cache
+  metadata. Scalar 64-bit values preserve their bits, even when equal to a
+  tracked address; compiler-known pointers retain allocation validation.
+  Focused tests cover interior pointers, invalid low/high addresses, both cold
+  and warm caches, and malformed argument sidecars. This does not change the
+  older metadata inference for native/AOT fallback registrations or explicitly
+  enabled workload-specialization templates.
 - The opt-in binary path accepts bounded raw PTX, CuMetal envelopes, CUDA fatbin
   PTX forms including version-`0x0101` LZ4/Zstd entries, and checked
   little-endian ELF32/ELF64 PTX sections. Decompression is capped at 64 MiB.

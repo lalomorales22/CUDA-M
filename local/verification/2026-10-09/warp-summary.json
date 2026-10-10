@@ -1,0 +1,600 @@
+{
+  "schema_version": 1,
+  "session_dates": [
+    "2026-10-09",
+    "2026-10-10"
+  ],
+  "timezone": "America/Los_Angeles",
+  "status": "bounded_post_fix_upstream_unittests_passed_with_separate_gpu_launch_audit",
+  "host": {
+    "model": "Mac16,10",
+    "processor": "Apple M4",
+    "unified_memory_bytes": 34359738368,
+    "os": "macOS",
+    "os_version": "27.0",
+    "os_build": "26A428",
+    "python": "3.14.7",
+    "python_path": "local/out/cosmos-venv/bin/python",
+    "evidence": "sw_vers and sysctl read during this audit; Python identity from the final runner summary"
+  },
+  "source_identity": {
+    "cumetal_base_commit": "156c232d1a4f69f3e9ab46b9cdf1d64643e99581",
+    "cumetal_scope": "base commit plus the working-tree compiler/runtime changes hashed below; not an unmodified-base result",
+    "warp_upstream_repository": "https://github.com/NVIDIA/warp.git",
+    "warp_tag": "v1.12.0",
+    "warp_upstream_commit": "e6c3ba2d54bb048115760b5cd7a4bb2573329ae7",
+    "warp_scope": "patched source build, not unmodified upstream macOS support",
+    "warp_patches": [
+      "scripts/warp-patches/0001-cumetal-macos-build.patch",
+      "scripts/warp-patches/0002-volume-builder-include-new.patch"
+    ],
+    "runtime_registration_cache_schema": "cumetal-registration-jit-v25-argument-authority",
+    "runtime_registration_metadata_magic": "CUMETA03",
+    "cumetal_build_type": "Release",
+    "cumetal_binary_shim_enabled": false
+  },
+  "build": {
+    "warp_arguments": [
+      "--cuda-path=$ROOT/build/cumetal-cuda-toolkit",
+      "--no-use-libmathdx",
+      "--no-standalone",
+      "--jobs=2"
+    ],
+    "cpu_jit_available": false,
+    "mathdx_available": false,
+    "cpu_jit_evidence": "Retained build log records standalone=False and build_llvm=False; warp/bin contains libwarp.dylib, not the standalone libwarp-clang library.",
+    "libwarp_runtime_dependency": "@rpath/libcumetal.dylib",
+    "build_log": "local/out/warp-build-first.log",
+    "security_note": "local/verification/2026-10-09/WARP-SECURITY.md",
+    "scope": "CPU host orchestration and API operations remain; absence of Warp CPU JIT is not a claim that no CPU computation occurs."
+  },
+  "invocation": {
+    "evidence": "Parent-process environment and flags recorded by the controlling task; environment is not independently reconstructed from summary.json or provenance records.",
+    "environment": {
+      "PATH": "$ROOT/local/toolchain:$PATH",
+      "CUMETAL_TOOL_XCRUN": "$ROOT/local/toolchain/xcrun",
+      "CUMETAL_ENABLE_WORKLOAD_SPECIALIZATIONS": "0",
+      "CUMETAL_ENABLE_LLMC_CPU_EMULATION": "0",
+      "CUMETAL_DISABLE_LLMC_EMULATION": "1",
+      "CUMETAL_TRACE_GPU": "1",
+      "CUMETAL_CACHE_DIR": "$ROOT/local/out/warp-final-registration-cache",
+      "WARP_CACHE_PATH": "$ROOT/local/out/warp-m4-verified-jit-cache",
+      "DYLD_LIBRARY_PATH": "$ROOT/build",
+      "CUMETAL_PYTHON": "$ROOT/local/out/cosmos-venv/bin/python",
+      "CUMETAL_WARP_DIR": "$ROOT/local/out/warp-cumetal",
+      "CUMETAL_WARP_RESULTS": "$ROOT/local/out/warp-m4-verified",
+      "CUMETAL_WARP_TIMEOUT": "120"
+    },
+    "CUMETAL_BUILD_DIR_override": null,
+    "command": [
+      "bash",
+      "scripts/run_warp_tests_cumetal.sh",
+      "test_copy",
+      "test_dense",
+      "test_devices",
+      "test_enum",
+      "test_import",
+      "test_module_hashing",
+      "test_triangle_closest_point",
+      "test_vec_lite",
+      "test_vec_assign_copy",
+      "test_atomic_bitwise"
+    ],
+    "device_test_filter": "cuda_0",
+    "timeout_seconds_per_module": 120,
+    "repeat_policy": "Select fresh result and cache directories. Process termination does not guarantee cancellation of outstanding GPU work."
+  },
+  "unittest": {
+    "modules_requested": 10,
+    "modules_completed": 10,
+    "modules_passed": 10,
+    "tests_run": 25,
+    "passed": 25,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "unstarted_modules": [],
+    "evidence": "Final summary, each structured module result, and each exit-code sidecar independently matched. Unittest outcomes are not themselves GPU execution evidence."
+  },
+  "gpu_audit": {
+    "audit_method": "Each CUMETAL_PROVENANCE marker is parsed with shell quoting rules, including progress/name prefixes. Duplicate/empty keys, malformed tokens and unrecognized source/provenance pairs are rejected.",
+    "required_fields": {
+      "event": "kernel_launch",
+      "semantic_quality": "exact",
+      "device": "apple_gpu",
+      "device_name": "Apple M4",
+      "launch_success": "true",
+      "unsupported_reason": ""
+    },
+    "other_checks": [
+      "duration_ns is a positive integer",
+      "kernel name and math_mode are nonempty",
+      "grid and block have three positive integer dimensions",
+      "compile_cache_hit is true or false"
+    ],
+    "accepted_source_provenance_pairs": [
+      [
+        "metallib",
+        "precompiled_metallib"
+      ],
+      [
+        "generic_ptx",
+        "generic_ptx_lowering"
+      ]
+    ],
+    "trace_markers": 44,
+    "validated_exact_completed_apple_m4_launches": 44,
+    "invalid_provenance_records": 0,
+    "progress_prefixed_trace_lines": 10,
+    "source_provenance_counts": {
+      "metallib/precompiled_metallib": 36,
+      "generic_ptx/generic_ptx_lowering": 8
+    },
+    "kernel_categories": {
+      "precompiled_forward_test_kernel": 32,
+      "generic_ptx_memory_helper": 8,
+      "precompiled_backward_test_kernel": 4
+    },
+    "modules_with_no_kernel_records": [
+      "test_copy",
+      "test_dense",
+      "test_devices",
+      "test_module_hashing"
+    ],
+    "no_kernel_boundary": "test_copy, test_dense, test_devices and test_module_hashing qualify only API/host-side unittest outcomes here. They do not provide traced GPU-kernel qualification.",
+    "scope": "semantic_quality=exact identifies the selected lowering path, not an independent numerical oracle. Memory helpers count as launches, not additional passing tests. Precompiled-metallib records establish execution, not source-lowering provenance by themselves."
+  },
+  "modules": [
+    {
+      "module": "test_copy",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 0.25573016599810217,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 0,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {},
+        "kernel_categories": {},
+        "kernel_counts": {},
+        "duration_ns_min": null,
+        "duration_ns_max": null,
+        "math_modes": []
+      },
+      "qualification_boundary": "API/host-side unittest outcomes only; no traced GPU kernel qualification"
+    },
+    {
+      "module": "test_dense",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 1.358739457995398,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 0,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {},
+        "kernel_categories": {},
+        "kernel_counts": {},
+        "duration_ns_min": null,
+        "duration_ns_max": null,
+        "math_modes": []
+      },
+      "qualification_boundary": "API/host-side unittest outcomes only; no traced GPU kernel qualification"
+    },
+    {
+      "module": "test_devices",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 6,
+        "passed": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 0.2619392920023529,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 0,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {},
+        "kernel_categories": {},
+        "kernel_counts": {},
+        "duration_ns_min": null,
+        "duration_ns_max": null,
+        "math_modes": []
+      },
+      "qualification_boundary": "API/host-side unittest outcomes only; no traced GPU kernel qualification"
+    },
+    {
+      "module": "test_enum",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 5,
+        "passed": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 3.0986549999943236,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 5,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 4,
+        "source_provenance_counts": {
+          "metallib/precompiled_metallib": 5
+        },
+        "kernel_categories": {
+          "precompiled_forward_test_kernel": 5
+        },
+        "kernel_counts": {
+          "test_alternative_accessors__locals__expect_alternative_accessors_08f47cab_cuda_kernel_forward": 1,
+          "test_intenum_ints__locals__expect_intenum_ints_8b008fb4_cuda_kernel_forward": 1,
+          "test_intflag_compare__locals__compute_intflag_compare_b80ad75e_cuda_kernel_forward": 1,
+          "test_intflag_ints__locals__expect_intflag_ints_9428b812_cuda_kernel_forward": 1,
+          "test_static_accessors__locals__expect_static_accessors_39348981_cuda_kernel_forward": 1
+        },
+        "duration_ns_min": 4250,
+        "duration_ns_max": 13791,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    },
+    {
+      "module": "test_import",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 0.8522263339982601,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 1,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {
+          "metallib/precompiled_metallib": 1
+        },
+        "kernel_categories": {
+          "precompiled_forward_test_kernel": 1
+        },
+        "kernel_counts": {
+          "test_import_func_4876ceb3_cuda_kernel_forward": 1
+        },
+        "duration_ns_min": 3208,
+        "duration_ns_max": 3208,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    },
+    {
+      "module": "test_module_hashing",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 0.7654117920028511,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 0,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {},
+        "kernel_categories": {},
+        "kernel_counts": {},
+        "duration_ns_min": null,
+        "duration_ns_max": null,
+        "math_modes": []
+      },
+      "qualification_boundary": "API/host-side unittest outcomes only; no traced GPU kernel qualification"
+    },
+    {
+      "module": "test_triangle_closest_point",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 11.873197416993207,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 1,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 0,
+        "source_provenance_counts": {
+          "metallib/precompiled_metallib": 1
+        },
+        "kernel_categories": {
+          "precompiled_forward_test_kernel": 1
+        },
+        "kernel_counts": {
+          "test_triangle_closest_point_kernel_4c594920_cuda_kernel_forward": 1
+        },
+        "duration_ns_min": 9851750,
+        "duration_ns_max": 9851750,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    },
+    {
+      "module": "test_vec_lite",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 3,
+        "passed": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 0.9907312919967808,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 3,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 2,
+        "source_provenance_counts": {
+          "metallib/precompiled_metallib": 3
+        },
+        "kernel_categories": {
+          "precompiled_forward_test_kernel": 3
+        },
+        "kernel_counts": {
+          "test_constructors_default_precision_fa3da2cc_cuda_kernel_forward": 1,
+          "test_constructors_explicit_precision_baf7a0f3_cuda_kernel_forward": 1,
+          "test_vector_constructor_value_func_70dd31ce_cuda_kernel_forward": 1
+        },
+        "duration_ns_min": 3250,
+        "duration_ns_max": 4750,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    },
+    {
+      "module": "test_vec_assign_copy",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 3,
+        "passed": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 2.544384541994077,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 16,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 2,
+        "source_provenance_counts": {
+          "generic_ptx/generic_ptx_lowering": 8,
+          "metallib/precompiled_metallib": 8
+        },
+        "kernel_categories": {
+          "generic_ptx_memory_helper": 8,
+          "precompiled_forward_test_kernel": 4,
+          "precompiled_backward_test_kernel": 4
+        },
+        "kernel_counts": {
+          "_Z14memtile_kernelPvPKvmm": 5,
+          "test_vec_assign_copy__locals__vec_assign_overwrite_85a154fe_cuda_kernel_forward": 1,
+          "test_vec_assign_copy__locals__vec_assign_overwrite_85a154fe_cuda_kernel_backward": 1,
+          "_Z20memtile_value_kernelIiEvPT_S0_m": 2,
+          "vec_assign_subscript_ae100095_cuda_kernel_forward": 1,
+          "vec_assign_subscript_ae100095_cuda_kernel_backward": 1,
+          "vec_assign_attribute_41ac9367_cuda_kernel_forward": 1,
+          "vec_assign_attribute_41ac9367_cuda_kernel_backward": 1,
+          "_Z20memtile_value_kernelIxEvPT_S0_m": 1,
+          "test_vec_slicing_assign_backward__locals__kernel_c889d236_cuda_kernel_forward": 1,
+          "test_vec_slicing_assign_backward__locals__kernel_c889d236_cuda_kernel_backward": 1
+        },
+        "duration_ns_min": 3124,
+        "duration_ns_max": 470958,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    },
+    {
+      "module": "test_atomic_bitwise",
+      "unittest_status": "passed",
+      "returncode": 0,
+      "unittest": {
+        "tests_run": 3,
+        "passed": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0
+      },
+      "elapsed_seconds": 1.0206292079965351,
+      "gpu": {
+        "validated_exact_completed_apple_m4_launches": 18,
+        "invalid_provenance_records": 0,
+        "progress_prefixed_trace_lines": 2,
+        "source_provenance_counts": {
+          "metallib/precompiled_metallib": 18
+        },
+        "kernel_categories": {
+          "precompiled_forward_test_kernel": 18
+        },
+        "kernel_counts": {
+          "test_atomic_bitwise_matrix_kernel_0618225d_cuda_kernel_forward": 6,
+          "test_atomic_bitwise_kernel_93d0243c_cuda_kernel_forward": 6,
+          "test_atomic_bitwise_vector_kernel_e7fc149d_cuda_kernel_forward": 6
+        },
+        "duration_ns_min": 19708,
+        "duration_ns_max": 118041,
+        "math_modes": [
+          "precompiled"
+        ]
+      },
+      "qualification_boundary": "upstream unittest outcomes plus separately validated kernel launches; not whole-module or whole-Warp coverage"
+    }
+  ],
+  "repaired_case": {
+    "module": "test_vec_assign_copy",
+    "post_fix_unittests": {
+      "tests_run": 3,
+      "passed": 3,
+      "failures": 0,
+      "errors": 0
+    },
+    "post_fix_gpu_launches": 16,
+    "pre_fix_log": "local/out/warp-m4-expanded/test_vec_assign_copy.log",
+    "pre_fix_unittests": {
+      "tests_run": 3,
+      "passed": 2,
+      "failures": 1,
+      "errors": 0
+    },
+    "pre_fix_gpu_launches": 15,
+    "launch_difference": "The passing replay adds an int64 memtile_value helper record. Launch counts alone do not establish the numerical repair; the upstream slicing-backward assertion now passes."
+  },
+  "remaining_gaps": [
+    {
+      "name": "full vector module argument footprint",
+      "evidence": "local/out/warp-vec-first.log",
+      "boundary": "Generated vector backward kernel has 45 arguments; current one-argument-per-buffer lowering exceeds Metal's 31 buffer slots. Full test_vec is not part of this final passing subset."
+    },
+    {
+      "name": "typed nonconstant vprintf format",
+      "evidence": "local/out/warp-m4-expanded/test_conditional.log",
+      "boundary": "The retained conditional run fails compilation with typed vprintf requires a constant format string. Its 19 reported unittest passes accompanied zero kernel launches and cannot qualify conditionals. No final conditional requalification is claimed."
+    },
+    {
+      "name": "optional driver surface",
+      "boundary": "Logs still report unavailable capture/graph, graphics interop, IPC and array entry points (CUDA error 500), including cuStreamGetCaptureInfo and cuArrayCreate."
+    },
+    {
+      "name": "suite and platform coverage",
+      "boundary": "This is ten selected modules on this Apple M4, not the full Warp suite, a general CUDA compatibility percentage, or Omniverse/Isaac Sim qualification. Historical M4 Pro measurements remain separate."
+    }
+  ],
+  "full_ctest_status": "Not assessed in this artifact; the controlling task records compiler/runtime release and debug CTest results separately.",
+  "identity_capture": {
+    "captured_at_utc": "2026-10-10T07:11:59.727255+00:00",
+    "phase": "post_final_replay_on_disk",
+    "boundary": "These current on-disk source, binary and log hashes identify the final replay's retained components, not process memory or a prelaunch attestation. They do not establish binary identity for earlier pre-fix runs."
+  },
+  "artifact_sha256": {
+    "local/out/warp-m4-verified/summary.json": "b8f4d2a594ef077c390bbca49b48c9cd163c829a72892f24b028fdf76dcb8bf1",
+    "local/out/warp-m4-verified/test_copy.log": "8288efa9352b2825e6fc1f4028936ee956e94689d89c6c3dcac83bd2d07fda72",
+    "local/out/warp-m4-verified/test_copy.result.json": "d786f50fede0f79ebea5b66446b8d95b2ceec6604989afc3b35807bfc04661cf",
+    "local/out/warp-m4-verified/test_copy.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_dense.log": "c8603f4e91b1055ae8ea158cfa1db3c0339ece7ff75c12da3f33942f37656fb0",
+    "local/out/warp-m4-verified/test_dense.result.json": "61a02c1f231c503612a9f937603a334ad99d3e12594244074e5c83638b5d4548",
+    "local/out/warp-m4-verified/test_dense.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_devices.log": "3a9afc4cfde0c559e2401efc8d8826f7917605560d2ee4c997de9ae667ad3eb0",
+    "local/out/warp-m4-verified/test_devices.result.json": "2c95107e7f41000e7312736dd2644eba0ab5fe8f3a0f3b2dd535392f5c1ba0f2",
+    "local/out/warp-m4-verified/test_devices.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_enum.log": "b805e369894f6358ceaccbd079db3ac0983064e45ea73a06d5e62a434b443392",
+    "local/out/warp-m4-verified/test_enum.result.json": "c00094f45f7226252f7530239037e5ca266e6420233de9b07ad18456fec9b09d",
+    "local/out/warp-m4-verified/test_enum.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_import.log": "eb015704e5ec3932d2bfcbeb08e48009a274c1a806f6af7a78a71092f95836ca",
+    "local/out/warp-m4-verified/test_import.result.json": "88ad9f3e92c62b234135756a6f4e4cf986de78474b794a7e10e083b43bf7106f",
+    "local/out/warp-m4-verified/test_import.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_module_hashing.log": "6680f94a127a67f83cd22c8d9fd4dcb39171de5c9c443464e2f55589f6294508",
+    "local/out/warp-m4-verified/test_module_hashing.result.json": "ffcaf52a6d44d0ec512af8b299cf079376b516dee749bfb94efce95667ab09b5",
+    "local/out/warp-m4-verified/test_module_hashing.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_triangle_closest_point.log": "ba91a75443bd60dae54e7a789bfa2ea3b5b456357b3847e09330f8b9eaf0077c",
+    "local/out/warp-m4-verified/test_triangle_closest_point.result.json": "54aa960cfdffb0782cc15fcb2bc7a9b3a03d4f12938c2e163a92f9cdf1065b31",
+    "local/out/warp-m4-verified/test_triangle_closest_point.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_vec_lite.log": "82e2578c0077bcc80e879ca74a7b09f4b329275306f4290806879e0de79dc77b",
+    "local/out/warp-m4-verified/test_vec_lite.result.json": "27de33f18247966e302ff622bf2640faf0134822f8c06d8459053d78076a7e61",
+    "local/out/warp-m4-verified/test_vec_lite.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_vec_assign_copy.log": "0a557efc18ea23653e1acc26387894e5fb20cdf454c7dfb479340ef65e1f5054",
+    "local/out/warp-m4-verified/test_vec_assign_copy.result.json": "56bef467fc8bebc4850e07e08134de64893d22522acc944d1333336ecc5feb20",
+    "local/out/warp-m4-verified/test_vec_assign_copy.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-m4-verified/test_atomic_bitwise.log": "a1ceeab2afa36d3e356fb1ac90b411f0fad626cd623040f37a3afedf9128cb13",
+    "local/out/warp-m4-verified/test_atomic_bitwise.result.json": "94e4a383c77fe61f3d7760bd56fc29f12d8b202716828285f70e0f148b1793df",
+    "local/out/warp-m4-verified/test_atomic_bitwise.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "local/out/warp-build-first.log": "b5fbdd409ce47e3993f8d4ca76587c085a1749a83813ec90424e7233c4b9bc14"
+  },
+  "execution_component_sha256": {
+    "compiler/passes/include/cumetal/passes/phase1_pipeline.h": "f41fa1e471b450cf3dafe4cb7a3761e81bda7897debed71b35343fe43e9ea9c8",
+    "compiler/passes/src/phase1_pipeline.cpp": "b6490e4fda9be55dc2fe8179db80a2872e1f1f3e21a3d09df947d1aaf6d22728",
+    "compiler/ptx/include/cumetal/ptx/lower_to_llvm.h": "0f14bc200f5480bc04c769d003453e7853a46c2071fb7eef38900c31b14b93d7",
+    "compiler/ptx/include/cumetal/ptx/lower_to_metal.h": "b063c809ef27e1f695eee0e2f3f04d350ac5427914ef04fd5937920c70469871",
+    "compiler/ptx/include/cumetal/ptx/parser.h": "c4e9e132632bfece3aaf27efa4bd242e767ba69fbe3fbb7c03aadf81f4318205",
+    "compiler/ptx/src/lower_to_llvm.cpp": "b159d5cf5a44e7d22b7804e85714e15d4d6d558b9a318e769705e34614ce71e3",
+    "compiler/ptx/src/lower_to_metal.cpp": "25bd3fbdca14b9998ac1dfecb6f3359b64feb936625e235fb578e28ea465ed73",
+    "compiler/ptx/src/parser.cpp": "2ee896f1cc22d662dc3ff7f2aa1a70c5c03c94da8dab005ab2d2d7435a440bde",
+    "runtime/registration/registration.cpp": "35e989a37c6c01908643eb49ff05764bda2d943e230a0ed537b28da80497332c",
+    "runtime/registration/registration.h": "02e6c62b866de789ea772d6aed4e2a019d1bfc1173b3e38fd9eec2143c198cb2",
+    "runtime/rt/cuda_runtime.cpp": "7c1e0b9d25bcc0d8e7074312eadb8709e188e727b336d8199e4ab2387440454e",
+    "compiler/ptx/include/cumetal/ptx/argument_metadata.h": "38da1e50a978d28120a7f5b9074df3d1930461219e05726122c560bc91b6f109",
+    "build/libcumetal.dylib": "eea80453da637da90ab1c9a0b7be45b96b5a95486b5de802779886fcc875a3c9",
+    "build/cumetalc": "feb9e65eee96b77b67d6276e611941dadb9760d84f70d23d7f3b94f2b478d186",
+    "local/out/warp-cumetal/warp/bin/libwarp.dylib": "eaa0776e5e389218d92a50a0fa2bc7451b6985b7151dd8ace1b1612a381250bf",
+    "scripts/run_warp_tests_cumetal.sh": "724bc90fb261ead46362da8f449b43791451ed8ed6fecf7a3c1ffec5559558f8",
+    "scripts/run_warp_tests_cumetal.py": "a2b83315e9f70f335a2d7a4194d6f6e314684d0c7b5234d5c778f8889a206034",
+    "scripts/build_warp_cumetal.sh": "8f8f07f32c8d1c155a1220f34f06ea143ecdc00bf60d146c201f8f8b9fc007a2"
+  },
+  "upstream_patch_sha256": {
+    "scripts/warp-patches/0001-cumetal-macos-build.patch": "96b16fd424e3ef31b9744027590ebc0c0a65bf6ef96fe5d18538aebf3a3b1bae",
+    "scripts/warp-patches/0002-volume-builder-include-new.patch": "eb438a06e6926840153ec46b0f816e53dbb1d9e33fcd10b21689b18d5b699f0c",
+    "local/out/warp-cumetal/build_lib.py": "94f17b72a89aff63b5cf96c827add09128a248db1c03e19864af780a2050dbc7",
+    "local/out/warp-cumetal/warp/_src/build_dll.py": "c9b4c9c5576c0b45edf613afb7af4367f7e38d9797e880aa26a5fccfa6875575",
+    "local/out/warp-cumetal/warp/_src/context.py": "c1f9ad4532cec4d2e1ac8ccb50ae98c366884efeeb33d3d7c681d7cb748fd0c2",
+    "local/out/warp-cumetal/warp/native/crt.h": "9703d2adf5e0ddedf482572eef0b0bcd25adf320b5812bc29c3c28d167ac881e",
+    "local/out/warp-cumetal/warp/native/cuda_util.cpp": "dafe9217baaa9ac9020dbb8a4d98fc9f14461fd60e79bd42da57a3b6167d8f17",
+    "local/out/warp-cumetal/warp/native/volume_builder.cu": "e18db6f8811ce95dddf3e75f10eff04c2a3487d7d991174cc3b4f63159ae1ef2",
+    "local/out/warp-cumetal/warp/native/warp.cu": "e338c2076b14e6cd2c97674f266daeb85e4171c32fdc5f1fbb55712d2ea6ef57"
+  }
+}

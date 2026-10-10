@@ -13,6 +13,9 @@
 #   CUMETAL_WARP_TAG     tag to pin (default: v1.12.0)
 #   CUMETAL_BUILD_DIR    CuMetal build tree to use (default: ./build)
 #   CUMETAL_JOBS         build parallelism for --build (default: hw.ncpu)
+#   CUMETAL_WARP_STANDALONE  0|1; build Warp CPU JIT support (default: 0)
+#   CUMETAL_WARP_LLVM_PATH   existing LLVM prefix; required with STANDALONE=1
+#   CUMETAL_PYTHON       existing Python interpreter for --build
 #
 # ── why this script exists ───────────────────────────────────────────────────
 # Warp needs two upstream changes before it can be built against CuMetal, and
@@ -36,6 +39,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 MODE="sweep"
+if [[ $# -gt 1 ]]; then
+    echo "usage: $0 [--clone-only|--build]" >&2
+    exit 2
+fi
 case "${1:-}" in
     --clone-only) MODE="clone" ;;
     --build)      MODE="build" ;;
@@ -49,6 +56,40 @@ WARP_TAG="${CUMETAL_WARP_TAG:-v1.12.0}"
 BUILD_DIR="${CUMETAL_BUILD_DIR:-${ROOT_DIR}/build}"
 [[ "${BUILD_DIR}" != /* ]] && BUILD_DIR="${ROOT_DIR}/${BUILD_DIR}"
 JOBS="${CUMETAL_JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || echo 4)}"
+STANDALONE="${CUMETAL_WARP_STANDALONE-0}"
+LLVM_PATH="${CUMETAL_WARP_LLVM_PATH-}"
+
+# Reject download-prone or ambiguous settings before fetching or patching Warp.
+case "${STANDALONE}" in
+    0)
+        if [[ -n "${LLVM_PATH}" ]]; then
+            echo "ERROR: CUMETAL_WARP_LLVM_PATH requires CUMETAL_WARP_STANDALONE=1." >&2
+            exit 2
+        fi
+        WARP_BUILD_OPTIONS=(--no-standalone)
+        ;;
+    1)
+        if [[ -z "${LLVM_PATH}" || ! -d "${LLVM_PATH}/include" || ! -d "${LLVM_PATH}/lib" ]]; then
+            echo "ERROR: CUMETAL_WARP_STANDALONE=1 requires an existing CUMETAL_WARP_LLVM_PATH with include/ and lib/." >&2
+            echo "       LLVM is never downloaded by this wrapper." >&2
+            exit 2
+        fi
+        # Preserve trailing path newlines so validation cannot silently strip them.
+        LLVM_PATH="$(cd -- "${LLVM_PATH}" && pwd -P && printf '.')"
+        LLVM_PATH="${LLVM_PATH%$'\n.'}"
+        # Pinned Warp embeds this prefix in shell-built -I/-L options. Until
+        # upstream quotes those commands consistently, refuse unsafe prefixes.
+        if [[ ! "${LLVM_PATH}" =~ ^[a-zA-Z0-9_./+-]+$ ]]; then
+            echo "ERROR: CUMETAL_WARP_LLVM_PATH must contain only ASCII letters, digits, _, ., /, +, or -; pinned Warp cannot safely handle spaces or shell metacharacters." >&2
+            exit 2
+        fi
+        WARP_BUILD_OPTIONS=(--standalone "--llvm-path=${LLVM_PATH}")
+        ;;
+    *)
+        echo "ERROR: CUMETAL_WARP_STANDALONE must be 0 or 1." >&2
+        exit 2
+        ;;
+esac
 
 # ── fetch ────────────────────────────────────────────────────────────────────
 if [[ -e "${WARP_DIR}" && ! -d "${WARP_DIR}/.git" ]]; then
@@ -91,10 +132,17 @@ if [[ "${MODE}" == "build" ]]; then
     [[ -n "${PYTHON}" ]] || { echo "ERROR: no python interpreter on PATH." >&2; exit 2; }
     # libmathdx ships no Darwin build, and Warp only uses it for tile linear
     # algebra (cuBLASDx/cuFFTDx), which CuMetal does not provide either.
-    echo "=== build_lib.py --cuda-path=${FAKE_CUDA} --no-use-libmathdx ==="
+    if [[ "${STANDALONE}" == "0" ]]; then
+        echo "Warp CPU JIT is not built (--no-standalone); CUDA device testing remains available."
+    else
+        echo "Warp CPU JIT uses existing LLVM at ${LLVM_PATH}; compatibility is checked by Warp's build."
+    fi
+    printf '=== build_lib.py --cuda-path=%q --no-use-libmathdx ' "${FAKE_CUDA}"
+    printf '%q ' "${WARP_BUILD_OPTIONS[@]}"
+    printf '===\n'
     cd "${WARP_DIR}"
     exec "${PYTHON}" build_lib.py --cuda-path="${FAKE_CUDA}" \
-        --no-use-libmathdx --jobs="${JOBS}"
+        --no-use-libmathdx "${WARP_BUILD_OPTIONS[@]}" --jobs="${JOBS}"
 fi
 
 # ── per-file compile sweep ───────────────────────────────────────────────────

@@ -986,11 +986,13 @@ ParseResult parse_ptx(std::string_view text, const ParseOptions& options) {
                 }
             }
             std::size_t byte_size = is_pointer ? 8 : scalar_bytes;
+            bool is_aggregate = false;
             const std::string raw_name = tokens.back();
             if (const std::size_t open = raw_name.find('[');
                 open != std::string::npos) {
                 const std::size_t close = raw_name.find(']', open + 1);
                 if (close != std::string::npos) {
+                    is_aggregate = !is_pointer;
                     try {
                         byte_size = scalar_bytes * static_cast<std::size_t>(
                             std::stoull(raw_name.substr(open + 1,
@@ -1005,7 +1007,8 @@ ParseResult parse_ptx(std::string_view text, const ParseOptions& options) {
                 params.push_back({.type = type, .name = std::move(name),
                                   .is_pointer = is_pointer,
                                   .byte_size = byte_size,
-                                  .alignment = alignment});
+                                  .alignment = alignment,
+                                  .is_aggregate = is_aggregate});
             }
         }
         return params;

@@ -59,14 +59,17 @@ bool is_debug_registration() {
 // This avoids recompiling the same kernel across process restarts. The binary UUID is what keeps
 // an entry from outliving the compiler that produced it -- see cumetal_binary_uuid() below.
 constexpr std::string_view kRegistrationJitCacheSchema =
-    "cumetal-registration-jit-v23-volatile-aggregate-provenance";
+    "cumetal-registration-jit-v25-argument-authority";
 
-constexpr std::string_view kRegistrationMetadataMagic = "CUMETA01";
+constexpr std::string_view kRegistrationMetadataMagic = "CUMETA03";
 constexpr std::size_t kMaxRegistrationMetadataBytes = 4u * 1024u * 1024u;
 constexpr std::uint32_t kMaxRegistrationPrintfFormats = 4096u;
+constexpr std::uint32_t kMaxRegistrationArguments = 4096u;
 
 struct RegistrationCacheMetadata {
     std::vector<std::string> printf_formats;
+    std::vector<cumetal::ptx::ArgumentMetadata> arguments;
+    bool argument_metadata_valid = false;
     bool uses_device_heap = false;
     bool uses_device_launch_queue = false;
     // A double libdevice call runs in binary32; kept so warm cache hits warn too.
@@ -314,7 +317,9 @@ bool consume_u32_le(const std::vector<std::uint8_t>& bytes,
 bool write_registration_metadata(const std::filesystem::path& artifact_path,
                                  const RegistrationCacheMetadata& metadata) {
     if (artifact_path.empty() ||
-        metadata.printf_formats.size() > kMaxRegistrationPrintfFormats) {
+        metadata.printf_formats.size() > kMaxRegistrationPrintfFormats ||
+        metadata.arguments.size() > kMaxRegistrationArguments ||
+        (!metadata.argument_metadata_valid && !metadata.arguments.empty())) {
         return false;
     }
 
@@ -324,6 +329,7 @@ bool write_registration_metadata(const std::filesystem::path& artifact_path,
     if (metadata.uses_device_heap) flags |= 1u;
     if (metadata.uses_device_launch_queue) flags |= 2u;
     if (metadata.fp64_libdevice_via_f32) flags |= 4u;
+    if (metadata.argument_metadata_valid) flags |= 8u;
     append_u32_le(&bytes, flags);
     append_u32_le(&bytes, static_cast<std::uint32_t>(metadata.printf_formats.size()));
     for (const std::string& format : metadata.printf_formats) {
@@ -334,6 +340,17 @@ bool write_registration_metadata(const std::filesystem::path& artifact_path,
         append_u32_le(&bytes, static_cast<std::uint32_t>(format.size()));
         bytes.insert(bytes.end(), format.begin(), format.end());
     }
+    append_u32_le(&bytes, static_cast<std::uint32_t>(metadata.arguments.size()));
+    for (const auto& argument : metadata.arguments) {
+        if (argument.size_bytes == 0 || argument.size_bytes > 32764 ||
+            (argument.is_pointer &&
+             (argument.is_aggregate || argument.size_bytes != sizeof(void*)))) {
+            return false;
+        }
+        append_u32_le(&bytes, argument.is_pointer ? 1u : argument.is_aggregate ? 2u : 0u);
+        append_u32_le(&bytes, argument.size_bytes);
+    }
+    if (bytes.size() > kMaxRegistrationMetadataBytes) return false;
 
     const std::filesystem::path destination = jit_metadata_path_for(artifact_path);
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -370,7 +387,7 @@ bool read_registration_metadata(const std::filesystem::path& artifact_path,
     std::uint32_t count = 0;
     if (!consume_u32_le(bytes, &offset, &flags) ||
         !consume_u32_le(bytes, &offset, &count) ||
-        (flags & ~7u) != 0 || count > kMaxRegistrationPrintfFormats) {
+        (flags & ~15u) != 0 || count > kMaxRegistrationPrintfFormats) {
         return false;
     }
 
@@ -378,6 +395,7 @@ bool read_registration_metadata(const std::filesystem::path& artifact_path,
     parsed.uses_device_heap = (flags & 1u) != 0;
     parsed.uses_device_launch_queue = (flags & 2u) != 0;
     parsed.fp64_libdevice_via_f32 = (flags & 4u) != 0;
+    parsed.argument_metadata_valid = (flags & 8u) != 0;
     parsed.printf_formats.reserve(count);
     for (std::uint32_t i = 0; i < count; ++i) {
         std::uint32_t size = 0;
@@ -388,6 +406,24 @@ bool read_registration_metadata(const std::filesystem::path& artifact_path,
         parsed.printf_formats.emplace_back(
             reinterpret_cast<const char*>(bytes.data() + offset), size);
         offset += size;
+    }
+    if (!consume_u32_le(bytes, &offset, &count) || count > kMaxRegistrationArguments ||
+        (!parsed.argument_metadata_valid && count != 0) ||
+        count > (bytes.size() - offset) / 8) {
+        return false;
+    }
+    parsed.arguments.reserve(count);
+    for (std::uint32_t i = 0; i < count; ++i) {
+        std::uint32_t kind = 0;
+        std::uint32_t size = 0;
+        if (!consume_u32_le(bytes, &offset, &kind) ||
+            !consume_u32_le(bytes, &offset, &size) || kind > 2 ||
+            size == 0 || size > 32764 || (kind == 1 && size != sizeof(void*))) {
+            return false;
+        }
+        parsed.arguments.push_back({.is_pointer = kind == 1,
+                                    .size_bytes = size,
+                                    .is_aggregate = kind == 2});
     }
     if (offset != bytes.size()) return false;
     *metadata = std::move(parsed);
@@ -437,6 +473,8 @@ struct RegistrationModule {
     std::optional<std::uint64_t> jit_cache_prefix_hash;
     std::unordered_map<std::string, std::string> emitted_kernel_metallibs;
     std::unordered_map<std::string, std::vector<std::string>> emitted_kernel_printf_formats;
+    std::unordered_map<std::string, std::optional<std::vector<cumetal::ptx::ArgumentMetadata>>>
+        emitted_kernel_arguments;
     std::unordered_map<std::string, bool> emitted_kernel_uses_device_heap;
     std::unordered_map<std::string, bool> emitted_kernel_uses_device_launch_queue;
     std::unordered_map<std::string, std::size_t> emitted_kernel_static_shared_bytes;
@@ -461,6 +499,7 @@ struct RegistrationRecord {
     std::string metallib_path;
     std::string kernel_name;
     std::vector<cumetalKernelArgInfo_t> arg_info;
+    std::optional<std::vector<cumetal::ptx::ArgumentMetadata>> argument_metadata;
     std::vector<cumetal::ptx::ExternalConstantSymbol> external_constant_symbols;
     std::size_t external_constant_buffer_size = 0;
     std::vector<cumetal::ptx::ExternalGlobalSymbol> external_global_symbols;
@@ -824,11 +863,9 @@ std::vector<cumetalKernelArgInfo_t> scan_ptx_entry_params(std::string_view param
             }
         }
         if (is_param && !type.empty()) {
-            // NVCC commonly emits kernel pointers as unqualified .u64/.s64/.b64
-            // parameters. The full PTX parser refines ambiguous 64-bit values from
-            // body data flow, but deliberately defaults them to pointers when it
-            // cannot prove scalar use. Keep that compatibility rule here. At launch,
-            // allocation lookup safely reclassifies an over-inferred small scalar.
+            // Preserve the conservative signature-only compatibility ABI for
+            // precompiled/AOT registrations. PTX JIT launches replace this guess
+            // with their selected compiler backend's actual argument metadata.
             const bool is_unannotated_pointer_width =
                 type == ".u64" || type == ".s64" || type == ".b64";
             const bool is_pointer = has_pointer_qualifier || is_unannotated_pointer_width;
@@ -992,7 +1029,9 @@ bool emit_ptx_entry_to_temp_metallib(const std::string& ptx_source,
                                      bool* out_uses_device_heap = nullptr,
                                      bool* out_uses_device_launch_queue = nullptr,
                                      bool* out_is_persistent = nullptr,
-                                     std::string* out_provenance = nullptr) {
+                                     std::string* out_provenance = nullptr,
+                                     std::optional<std::vector<cumetal::ptx::ArgumentMetadata>>*
+                                         out_arguments = nullptr) {
     if (ptx_source.empty() || kernel_name.empty() || out_path == nullptr) {
         REG_DEBUG("emit_ptx_entry_to_temp_metallib: invalid argument (ptx=%zu, kernel=%s)",
                   ptx_source.size(), kernel_name.c_str());
@@ -1028,6 +1067,10 @@ bool emit_ptx_entry_to_temp_metallib(const std::string& ptx_source,
     REG_DEBUG("emit kernel '%s' ptx_size=%zu", kernel_name.c_str(), ptx_source.size());
 
     const auto publish_metadata = [&](const RegistrationCacheMetadata& metadata) {
+        if (out_arguments != nullptr) {
+            if (metadata.argument_metadata_valid) *out_arguments = metadata.arguments;
+            else out_arguments->reset();
+        }
         if (out_printf_formats != nullptr) {
             *out_printf_formats = metadata.printf_formats;
         }
@@ -1139,8 +1182,15 @@ bool emit_ptx_entry_to_temp_metallib(const std::string& ptx_source,
         maybe_dump_ptx_for_llvm_debug(kernel_name, ptx_source);
         return false;
     }
+    if (!lowered_metal.argument_metadata_valid &&
+        lowered_metal.lowering_kind != cumetal::ptx::MetalLoweringKind::kSpecializedMsl) {
+        REG_DEBUG("lowering produced no argument ABI for '%s'", kernel_name.c_str());
+        return false;
+    }
     RegistrationCacheMetadata metadata{
         .printf_formats = lowered_metal.printf_formats,
+        .arguments = lowered_metal.arguments,
+        .argument_metadata_valid = lowered_metal.argument_metadata_valid,
         .uses_device_heap = lowered_metal.uses_device_heap,
     };
     metadata.fp64_libdevice_via_f32 = lowered_metal.fp64_libdevice_via_f32;
@@ -1297,6 +1347,9 @@ bool emit_ptx_entry_to_temp_metallib(const std::string& ptx_source,
             REG_DEBUG("lower_ptx_to_llvm_ir failed for kernel '%s'", kernel_name.c_str());
             return false;
         }
+        if (!lowered.argument_metadata_valid) return false;
+        metadata.arguments = lowered.arguments;
+        metadata.argument_metadata_valid = true;
         metadata.printf_formats = lowered.printf_formats;
         metadata.uses_device_heap = lowered.uses_device_heap;
         metadata.uses_device_launch_queue = lowered.uses_device_launch_queue;
@@ -1417,7 +1470,9 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
                                               bool* out_uses_device_heap,
                                               bool* out_uses_device_launch_queue,
                                               std::size_t* out_static_shared_bytes,
-                                              std::string* out_provenance = nullptr) {
+                                              std::string* out_provenance = nullptr,
+                                              std::optional<std::vector<cumetal::ptx::ArgumentMetadata>>*
+                                                  out_arguments = nullptr) {
     if (module_handle == nullptr || kernel_name.empty()) {
         return fallback_metallib_path_from_env();
     }
@@ -1446,6 +1501,10 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
         if (cached != module.emitted_kernel_metallibs.end()) {
             REG_DEBUG("resolve_metallib '%s': in-process cache hit '%s'",
                       kernel_name.c_str(), cached->second.c_str());
+            if (out_arguments != nullptr) {
+                const auto args = module.emitted_kernel_arguments.find(kernel_name);
+                if (args != module.emitted_kernel_arguments.end()) *out_arguments = args->second;
+            }
             if (out_printf_formats != nullptr) {
                 const auto pf_it = module.emitted_kernel_printf_formats.find(kernel_name);
                 if (pf_it != module.emitted_kernel_printf_formats.end()) {
@@ -1506,6 +1565,7 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
               kernel_name.c_str(), static_shared);
     std::string emitted_path;
     std::vector<std::string> local_printf_formats;
+    std::optional<std::vector<cumetal::ptx::ArgumentMetadata>> local_arguments;
     bool local_uses_device_heap = false;
     bool local_uses_device_launch_queue = false;
     bool is_persistent = false;
@@ -1515,7 +1575,7 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
                                          &local_printf_formats, &local_uses_device_heap,
                                          &local_uses_device_launch_queue,
                                          &is_persistent,
-                                         &local_provenance)) {
+                                         &local_provenance, &local_arguments)) {
         REG_DEBUG("resolve_metallib '%s': JIT compile failed, using env fallback",
                   kernel_name.c_str());
         return allow_environment_fallback ? fallback_metallib_path_from_env()
@@ -1541,6 +1601,10 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
     const auto inserted = module.emitted_kernel_metallibs.emplace(kernel_name, emitted_path);
     if (!inserted.second) {
         if (!is_persistent) remove_path_if_exists(emitted_path);
+        if (out_arguments != nullptr) {
+            const auto args = module.emitted_kernel_arguments.find(kernel_name);
+            if (args != module.emitted_kernel_arguments.end()) *out_arguments = args->second;
+        }
         if (out_printf_formats != nullptr) {
             const auto pf_it = module.emitted_kernel_printf_formats.find(kernel_name);
             if (pf_it != module.emitted_kernel_printf_formats.end()) {
@@ -1577,6 +1641,8 @@ std::string resolve_metallib_path_for_kernel(void* module_handle,
     }
 
     module.emitted_kernel_printf_formats.emplace(kernel_name, local_printf_formats);
+    module.emitted_kernel_arguments.emplace(kernel_name, local_arguments);
+    if (out_arguments != nullptr) *out_arguments = std::move(local_arguments);
     module.emitted_kernel_uses_device_heap.emplace(kernel_name,
                                                    local_uses_device_heap);
     module.emitted_kernel_uses_device_launch_queue.emplace(
@@ -1787,12 +1853,13 @@ bool lookup_registered_kernel(const void* host_function, RegisteredKernel* out) 
         bool uses_device_launch_queue = false;
         std::size_t static_shared_bytes = 0;
         std::string provenance;
+        std::optional<std::vector<cumetal::ptx::ArgumentMetadata>> arguments;
         std::string metallib_path =
             resolve_metallib_path_for_kernel(record.module_handle, record.kernel_name,
                                              &printf_formats, &uses_device_heap,
                                              &uses_device_launch_queue,
                                              &static_shared_bytes,
-                                             &provenance);
+                                             &provenance, &arguments);
 
         RegistrationState& s = state();
         std::lock_guard<std::mutex> lock(s.mutex);
@@ -1802,6 +1869,16 @@ bool lookup_registered_kernel(const void* host_function, RegisteredKernel* out) 
         }
         if (found->second.metallib_path.empty()) {
             found->second.metallib_path = std::move(metallib_path);
+            if (arguments.has_value()) {
+                found->second.arg_info.clear();
+                for (const auto& argument : *arguments) {
+                    found->second.arg_info.push_back({
+                        .kind = argument.is_pointer ? CUMETAL_ARG_BUFFER : CUMETAL_ARG_BYTES,
+                        .size_bytes = argument.size_bytes});
+                }
+                found->second.arg_info_resolved = true;
+                found->second.argument_metadata = std::move(arguments);
+            }
             if (!printf_formats.empty()) {
                 found->second.printf_formats = std::move(printf_formats);
             }
@@ -1821,6 +1898,7 @@ bool lookup_registered_kernel(const void* host_function, RegisteredKernel* out) 
     out->provenance = record.provenance;
     out->arg_info = record.arg_info;
     out->arg_info_resolved = record.arg_info_resolved;
+    out->argument_metadata = record.argument_metadata;
     out->printf_formats = record.printf_formats;
     out->uses_device_heap = record.uses_device_heap;
     out->uses_device_launch_queue = record.uses_device_launch_queue;

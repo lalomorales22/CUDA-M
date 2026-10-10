@@ -29,6 +29,16 @@
   thread a private copy at entry, which costs a copy of the aggregate per
   thread. Kernels that only read it, such as large functors, keep reading the
   shared bytes.
+- Legacy PTX MSL/LLVM lowering rejects scalar `.f16` formal parameters with an
+  explicit diagnostic: those emitters would otherwise declare a 32-bit value
+  for a 2-byte CUDA argument. The typed PTX backend retains the 2-byte argument
+  ABI. This refusal does not apply to half values passed as `.b16` bit patterns
+  and does not add general legacy half-precision parameter support.
+- Compiler-authoritative launch argument metadata applies to generic PTX JIT
+  lowering. Explicitly opted-in workload-specialized MSL templates retain
+  signature-based compatibility handling, including after cache reload, because
+  their template ABI cannot be inferred from the supplied PTX body. Native/AOT
+  compatibility handling is unchanged.
 - Stream priorities are reported as zero and are not Metal priority queues.
 - CUDA device clocks use a device-wide atomic counter with a fixed monotonic
   quantum. They preserve wait-loop progress and unsigned wraparound behavior,

@@ -13,6 +13,7 @@ struct Parameter {
     bool is_pointer = false;
     std::size_t byte_size = 0;
     std::size_t alignment = 1;
+    bool is_aggregate = false;
 };
 
 struct EntryFunction {

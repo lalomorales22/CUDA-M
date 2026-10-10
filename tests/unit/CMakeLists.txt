@@ -655,6 +655,19 @@ add_test(
 
 find_program(CUMETAL_PYTHON3_EXECUTABLE python3)
 if(CUMETAL_PYTHON3_EXECUTABLE)
+add_test(
+    NAME unit_warp_build_contract
+    COMMAND ${CUMETAL_PYTHON3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/check_warp_build_contract_test.py
+            ${CMAKE_SOURCE_DIR}/scripts/build_warp_cumetal.sh
+)
+set_tests_properties(unit_warp_build_contract PROPERTIES TIMEOUT 60)
+add_test(
+    NAME unit_warp_test_runner
+    COMMAND ${CUMETAL_PYTHON3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/check_warp_test_runner_test.py
+)
+set_tests_properties(unit_warp_test_runner PROPERTIES TIMEOUT 60)
 add_executable(cumetal_compile_trace_probe compile_trace_probe.cpp)
 target_link_libraries(cumetal_compile_trace_probe PRIVATE cumetal_common)
 target_compile_options(cumetal_compile_trace_probe PRIVATE -Wall -Wextra -Wpedantic)

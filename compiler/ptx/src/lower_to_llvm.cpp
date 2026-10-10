@@ -10798,6 +10798,24 @@ LowerToLlvmResult lower_ptx_to_llvm_ir(std::string_view ptx, const LowerToLlvmOp
         result.error = pipeline.error;
         return result;
     }
+    if (std::any_of(pipeline.parameters.begin(), pipeline.parameters.end(),
+                    [](const auto& parameter) {
+                        return parameter.type == ".f16" && !parameter.is_pointer &&
+                            !parameter.is_aggregate;
+                    })) {
+        result.error = "legacy LLVM lowering does not support scalar .f16 kernel parameters; "
+                       "use the cumetal-ir backend for the two-byte ABI";
+        return result;
+    }
+
+    for (const auto& parameter : pipeline.parameters) {
+        result.arguments.push_back({
+            .is_pointer = parameter.is_pointer,
+            .size_bytes = static_cast<std::uint32_t>(parameter.is_pointer ? 8 : parameter.byte_size),
+            .is_aggregate = !parameter.is_pointer && parameter.is_aggregate,
+        });
+    }
+    result.argument_metadata_valid = true;
 
     // Device printf may live in a helper rather than directly in the selected
     // kernel (Clang's CUDA frontend commonly emits exactly that shape). Decode

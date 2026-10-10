@@ -20,6 +20,7 @@ struct Phase1PipelineOptions {
 struct Phase1PipelineOutput {
     bool ok = false;
     std::string entry_name;
+    std::vector<cumetal::ptx::Parameter> parameters;
     std::vector<LoweredInstruction> lowered_instructions;
     std::vector<PrintfLoweredCall> printf_calls;
     std::vector<PrintfFormatEntry> printf_formats;

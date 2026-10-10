@@ -1,4 +1,5 @@
 #include "cumetal/ptx/lower_to_metal.h"
+#include "cumetal/ptx/lower_to_llvm.h"
 
 #include <cstdio>
 #include <string>
@@ -571,6 +572,12 @@ DONE:
     if (!expect(!r_rope_neox_f32.approximate,
                 "forward no-FF float GPT-NeoX RoPE is exact"))
         return 1;
+    if (!expect(r_rope_neox_f32.lowering_kind ==
+                    cumetal::ptx::MetalLoweringKind::kSpecializedMsl &&
+                    !r_rope_neox_f32.argument_metadata_valid &&
+                    r_rope_neox_f32.arguments.empty(),
+                "specialized RoPE cannot publish placeholder PTX as its emitted ABI"))
+        return 1;
     if (!expect(contains(r_rope_neox_f32.metal_source,
                          "src[ix + n_dims / 2]"),
                 "GPT-NeoX RoPE pairs lower and upper dimension halves"))
@@ -585,6 +592,9 @@ DONE:
         return 1;
     if (!expect(!r_rope_neox_f16.approximate,
                 "forward no-FF half-output GPT-NeoX RoPE is exact"))
+        return 1;
+    if (!expect(!r_rope_neox_f16.argument_metadata_valid && r_rope_neox_f16.arguments.empty(),
+                "half-output specialized RoPE also leaves template ABI metadata unset"))
         return 1;
     if (!expect(contains(r_rope_neox_f16.metal_source, "device half* dst"),
                 "GPT-NeoX RoPE selects half output"))
@@ -1570,6 +1580,204 @@ $L__BB0_2:
                 "a scoped 16-bit store the typed backend cannot take is refused, not split")) {
         std::fprintf(stderr, "%s\n", scoped_half.error.c_str());
         return 1;
+    }
+
+    // Registration must consume the emitted ABI, not infer pointers from the
+    // width or value of an argument. Warp's 64-bit memtile value is scalar.
+    const std::string scalar64_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.visible .entry store_scalar64(.param .u64 output, .param .u64 value)
+{
+    .reg .b64 %rd<2>;
+    ld.param.u64 %rd0, [output];
+    ld.param.u64 %rd1, [value];
+    st.global.u64 [%rd0], %rd1;
+    ret;
+}
+)PTX";
+    cumetal::ptx::LowerToMetalOptions scalar64_options;
+    scalar64_options.entry_name = "store_scalar64";
+    const auto scalar64_legacy =
+        cumetal::ptx::lower_ptx_to_metal_source(scalar64_ptx, scalar64_options);
+    const auto scalar64_abi = [](const auto& lowered) {
+        return lowered.ok && lowered.argument_metadata_valid && lowered.arguments.size() == 2 &&
+            lowered.arguments[0].is_pointer && lowered.arguments[0].size_bytes == 8 &&
+            !lowered.arguments[0].is_aggregate && !lowered.arguments[1].is_pointer &&
+            lowered.arguments[1].size_bytes == 8 && !lowered.arguments[1].is_aggregate;
+    };
+    if (!expect(scalar64_abi(scalar64_legacy),
+                "legacy fallback metadata distinguishes scalar64 from device pointer")) return 1;
+    cumetal::ptx::LowerToLlvmOptions scalar64_llvm_options;
+    scalar64_llvm_options.entry_name = "store_scalar64";
+    const auto scalar64_llvm =
+        cumetal::ptx::lower_ptx_to_llvm_ir(scalar64_ptx, scalar64_llvm_options);
+    if (!expect(scalar64_abi(scalar64_llvm),
+                "LLVM metadata agrees with scalar64 fallback ABI")) return 1;
+    scalar64_options.backend = cumetal::ptx::PtxMetalBackend::kCumetalIr;
+    const auto scalar64_typed =
+        cumetal::ptx::lower_ptx_to_metal_source(scalar64_ptx, scalar64_options);
+    if (!expect(scalar64_abi(scalar64_typed),
+                "typed metadata distinguishes scalar64 from device pointer")) return 1;
+
+    const std::string half_abi_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.visible .entry half_argument(.param .f16 value)
+{
+    ret;
+}
+)PTX";
+    cumetal::ptx::LowerToMetalOptions half_options;
+    half_options.entry_name = "half_argument";
+    const auto half_legacy =
+        cumetal::ptx::lower_ptx_to_metal_source(half_abi_ptx, half_options);
+    if (!expect(!half_legacy.ok && !half_legacy.argument_metadata_valid &&
+                    contains(half_legacy.error, "scalar .f16 kernel parameters"),
+                "legacy MSL refuses half parameters instead of publishing a mismatched ABI")) return 1;
+    cumetal::ptx::LowerToLlvmOptions half_llvm_options;
+    half_llvm_options.entry_name = "half_argument";
+    const auto half_llvm =
+        cumetal::ptx::lower_ptx_to_llvm_ir(half_abi_ptx, half_llvm_options);
+    if (!expect(!half_llvm.ok && !half_llvm.argument_metadata_valid &&
+                    contains(half_llvm.error, "scalar .f16 kernel parameters"),
+                "legacy LLVM refuses half parameters instead of publishing a mismatched ABI")) return 1;
+    half_options.backend = cumetal::ptx::PtxMetalBackend::kCumetalIr;
+    const auto half_typed =
+        cumetal::ptx::lower_ptx_to_metal_source(half_abi_ptx, half_options);
+    if (!expect(half_typed.ok && half_typed.argument_metadata_valid &&
+                    half_typed.arguments.size() == 1 && !half_typed.arguments[0].is_pointer &&
+                    !half_typed.arguments[0].is_aggregate && half_typed.arguments[0].size_bytes == 2,
+                "typed half parameter retains its two-byte scalar ABI")) {
+        std::fprintf(stderr, "%s\n", half_typed.error.c_str());
+        return 1;
+    }
+
+    const std::string helper_abi_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.func store_helper(.param .b64 destination, .param .b64 value)
+{
+    .reg .b64 %rd<2>;
+    ld.param.b64 %rd0, [destination];
+    ld.param.b64 %rd1, [value];
+    st.global.b64 [%rd0], %rd1;
+    ret;
+}
+.visible .entry scalar64_through_helper(.param .u64 output, .param .u64 value)
+{
+    .reg .b64 %rd<2>;
+    ld.param.u64 %rd0, [output];
+    ld.param.u64 %rd1, [value];
+    {
+        .param .b64 argument0;
+        .param .b64 argument1;
+        st.param.b64 [argument0], %rd0;
+        st.param.b64 [argument1], %rd1;
+        call.uni store_helper, (argument0, argument1);
+    }
+    ret;
+}
+)PTX";
+    scalar64_options.entry_name = "scalar64_through_helper";
+    const auto helper_abi =
+        cumetal::ptx::lower_ptx_to_metal_source(helper_abi_ptx, scalar64_options);
+    if (!expect(scalar64_abi(helper_abi) && helper_abi.entry_name == "scalar64_through_helper",
+                "typed ABI uses selected kernel and preserves helper-derived pointer evidence")) {
+        std::fprintf(stderr, "%s\n", helper_abi.error.c_str());
+        return 1;
+    }
+
+    const std::string pointer_offset_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.visible .entry pointer_offset(.param .u64 output, .param .u64 offset)
+{
+    .reg .b64 %rd<3>;
+    ld.param.u64 %rd0, [output];
+    ld.param.u64 %rd1, [offset];
+    add.u64 %rd2, %rd0, %rd1;
+    st.global.u32 [%rd2], 7;
+    ret;
+}
+)PTX";
+    scalar64_options.entry_name = "pointer_offset";
+    const auto pointer_offset =
+        cumetal::ptx::lower_ptx_to_metal_source(pointer_offset_ptx, scalar64_options);
+    if (!expect(scalar64_abi(pointer_offset),
+                "typed ABI preserves recovered pointer plus scalar64 offset")) {
+        std::fprintf(stderr, "%s\n", pointer_offset.error.c_str());
+        return 1;
+    }
+
+    const std::string constant_abi_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.extern .const .align 4 .b8 constant_values[4];
+.visible .entry read_constant(.param .u64 output)
+{
+    .reg .b64 %rd<2>;
+    .reg .b32 %r<1>;
+    ld.param.u64 %rd0, [output];
+    mov.u64 %rd1, constant_values;
+    ld.const.u32 %r0, [%rd1];
+    st.global.u32 [%rd0], %r0;
+    ret;
+}
+)PTX";
+    scalar64_options.entry_name = "read_constant";
+    const auto constant_abi =
+        cumetal::ptx::lower_ptx_to_metal_source(constant_abi_ptx, scalar64_options);
+    if (!expect(constant_abi.ok && constant_abi.argument_metadata_valid &&
+                    constant_abi.arguments.size() == 1 && constant_abi.arguments[0].is_pointer &&
+                    constant_abi.arguments[0].size_bytes == 8 &&
+                    contains(constant_abi.metal_source, "[[buffer(30)]]"),
+                "typed external constant binding is emitted but excluded from launch arguments")) {
+        std::fprintf(stderr, "%s\n", constant_abi.error.c_str());
+        return 1;
+    }
+
+    const std::string aggregate_abi_ptx = R"PTX(
+.version 7.0
+.target sm_80
+.address_size 64
+.visible .entry aggregate_argument(.param .align 8 .b8 payload[24])
+{
+    ret;
+}
+.visible .entry no_arguments()
+{
+    ret;
+}
+)PTX";
+    for (const auto backend : {cumetal::ptx::PtxMetalBackend::kLegacy,
+                               cumetal::ptx::PtxMetalBackend::kCumetalIr}) {
+        cumetal::ptx::LowerToMetalOptions abi_options;
+        abi_options.backend = backend;
+        abi_options.entry_name = "aggregate_argument";
+        const auto aggregate_abi =
+            cumetal::ptx::lower_ptx_to_metal_source(aggregate_abi_ptx, abi_options);
+        if (!expect(aggregate_abi.ok && aggregate_abi.argument_metadata_valid &&
+                        aggregate_abi.arguments.size() == 1 &&
+                        !aggregate_abi.arguments[0].is_pointer &&
+                        aggregate_abi.arguments[0].is_aggregate &&
+                        aggregate_abi.arguments[0].size_bytes == 24,
+                    "by-value aggregate metadata preserves shape and complete byte size")) return 1;
+        abi_options.entry_name = "no_arguments";
+        const auto zero_abi =
+            cumetal::ptx::lower_ptx_to_metal_source(aggregate_abi_ptx, abi_options);
+        if (!expect(zero_abi.ok && zero_abi.argument_metadata_valid && zero_abi.arguments.empty(),
+                    "zero-argument kernel has valid empty metadata")) return 1;
+        abi_options.entry_name = "missing_entry";
+        const auto missing_abi =
+            cumetal::ptx::lower_ptx_to_metal_source(aggregate_abi_ptx, abi_options);
+        if (!expect(!missing_abi.ok && !missing_abi.argument_metadata_valid,
+                    "missing entry cannot publish valid argument metadata")) return 1;
     }
 
     std::printf("PASS: ptx lower-to-metal unit tests\n");
