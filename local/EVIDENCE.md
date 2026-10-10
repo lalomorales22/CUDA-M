@@ -1,5 +1,9 @@
 # Apple Silicon CUDA verification — 2026-10-08
 
+This is the historical M1 report. The newer [M4 REA trace](verification/2026-10-09/REA.md)
+records successful runtime observation on 2026-10-09; the scope and unresolved
+questions below apply to this older run.
+
 ## Questions and results
 
 | Question | Result | Evidence |

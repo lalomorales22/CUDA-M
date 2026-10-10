@@ -3,6 +3,15 @@
 Date: 2026-10-09. Apple M4 Mac mini, 32 GiB, macOS 27.0.
 Release build, LLVM 22.1.7, Metal compiler 32023.921, binary shim OFF.
 
+## REA runtime trace
+
+REA 6.3.0 now also observes the M4 CUDA-to-Metal boundary under LLDB: five CUDA
+launch entries, five Metal dispatch entries, and five successful GPU-completion
+records with all independent numerical checks passing. Process exit 0; requested
+breakpoints resolved and no configured trace limit reached. See the
+[trace report and reproduction command](REA.md) and [portable summary](rea-summary.json).
+This is a bounded runtime observation, not broader compatibility qualification.
+
 ## Compatibility hardening follow-up
 
 The follow-up fixes direct NVVM 32-bit system atomics, unsigned system min/max

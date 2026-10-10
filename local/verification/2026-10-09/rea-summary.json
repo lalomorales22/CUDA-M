@@ -1,0 +1,92 @@
+{
+  "description": "Derived REA summary, not a canonical Evidence bundle. Machine-specific paths and addresses omitted.",
+  "date": "2026-10-09",
+  "host": "Apple M4 Mac mini, macOS 27.0",
+  "rea_version": "6.3.0",
+  "source_revision": "7a95e8b6a785accc8b59a402b27e6e84bb835f99",
+  "static": {
+    "evidence_id": "ev_be3a5b1c4ec0f390930d1044593f1a55283bf70ce1adf16943bf219517ae021b",
+    "subject_sha256": "25dc16129a6791b18a7cab8636ea2e7b5c5345ca0c0085379afd8bf6d826fe52",
+    "architecture": "arm64",
+    "cuda_exports": [
+      "_cudaDeviceSynchronize",
+      "_cudaLaunchKernel",
+      "_cudaMalloc",
+      "_cudaMemcpy"
+    ],
+    "metal_dependencies": [
+      "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+      "/System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/MetalPerformanceShaders"
+    ],
+    "limitations": [
+      "Imports and exports combine dyld_info and nm; stripped or toolchain-hidden symbols may be absent.",
+      "vtool output is retained as provenance but only otool build metadata is normalized."
+    ]
+  },
+  "runtime": {
+    "evidence_id": "ev_5c44539a0250691e3adcb603e333cedfebe31e485a2574f0bd8810de68638c3e",
+    "subject_sha256": "ff77bd08cdab04332038661c40cf71ec44d027a9d1e711d62841cf9fd06777ac",
+    "process_outcome": "exited",
+    "exit_status": 0,
+    "terminated": true,
+    "selected_path_identity_stable": true,
+    "loaded_image_sha256": null,
+    "event_counts": {
+      "cudaMalloc": 14,
+      "cudaLaunchKernel": 5,
+      "-[AGXG16GFamilyComputeContext dispatchThreadgroups:threadsPerThreadgroup:]": 5
+    },
+    "representative_dispatch_backtrace": [
+      {
+        "module": "libcumetal.dylib",
+        "symbol": "cumetal::metal_backend::launch_kernel(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, cumetal::metal_backend::LaunchConfig const&, std::__1::vector<cumetal::metal_backend::KernelArg, std::__1::allocator<cumetal::metal_backend::KernelArg>> const&, std::__1::shared_ptr<cumetal::metal_backend::Stream> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*)"
+      },
+      {
+        "module": "libcumetal.dylib",
+        "symbol": "cudaLaunchKernel"
+      },
+      {
+        "module": "libcumetal.dylib",
+        "symbol": "cudaLaunch"
+      },
+      {
+        "module": "apple_silicon_smoke",
+        "symbol": "__device_stub__smoke_saxpy(float const*, float const*, float*, float, int)"
+      },
+      {
+        "module": "apple_silicon_smoke",
+        "symbol": "(anonymous namespace)::run_saxpy(int)"
+      },
+      {
+        "module": "apple_silicon_smoke",
+        "symbol": "main"
+      },
+      {
+        "module": "dyld",
+        "symbol": "start"
+      }
+    ],
+    "coverage": {
+      "status": "complete",
+      "event_limit_reached": false,
+      "resource_limit_reached": false,
+      "unresolved_breakpoints": []
+    },
+    "stdout": "DEVICE: Apple M4; warp=32; max threads/block=1024; shared bytes/block=32768\nCHECKS: signed dyadic inputs; exact finite CPU references; guarded output tails\nPASS: saxpy n=1, every output and 512 tail canaries\nPASS: saxpy n=257, every output and 512 tail canaries\nPASS: saxpy n=100003, every output and 512 tail canaries\nPASS: matmul 37x29 * 29x41, all 1517 outputs, 2D blocks and tail canaries\nPASS: reduction n=100003, all 391 GPU block partials, CPU final sum=-15.75000000, tail canaries\nALL CHECKS PASSED\n",
+    "stderr": "CUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M4\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=3749 grid=(1,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M4\" math_mode=precompiled compile_cache_hit=true launch_success=true duration_ns=5499 grid=(2,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z11smoke_saxpyPKfS0_Pffi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M4\" math_mode=precompiled compile_cache_hit=true launch_success=true duration_ns=31249 grid=(391,1,1) block=(256,1,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z12smoke_matmulPKfS0_Pfiii\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M4\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=15625 grid=(3,3,1) block=(16,16,1) unsupported_reason=\"\"\nCUMETAL_PROVENANCE event=kernel_launch kernel=\"_Z18smoke_block_reducePKfPfi\" source=generic_nvvm provenance=generic_nvvm_lowering semantic_quality=exact device=apple_gpu device_name=\"Apple M4\" math_mode=precompiled compile_cache_hit=false launch_success=true duration_ns=387333 grid=(391,1,1) block=(256,1,1) unsupported_reason=\"\"\n",
+    "output_complete": true,
+    "other_stops": [
+      "signal SIGSTOP"
+    ],
+    "limitations": [
+      "Only entries are observed; return values, floating-point and stack-passed arguments are not captured.",
+      "Registers are the raw integer argument registers at entry. For Objective-C methods the first two hold the receiver and the selector.",
+      "Receiver classes come from LLDB's Objective-C runtime reader without running target code; they are null for class methods and for receivers LLDB cannot classify.",
+      "Calls that never reach a symbol's entry, such as inlined code or objc_direct methods called directly, are not observed.",
+      "The target is launched directly under LLDB, not through LaunchServices; LLDB disables ASLR for it, so load addresses can equal file addresses.",
+      "The observation window is checked about once a second, and recording pauses the process at every entry, which slows it.",
+      "The selected pathname digest and LLDB module identity are checked around launch. No immutable executable snapshot is used; concurrent in-place mutation or replacement and restoration cannot be ruled out, so the loaded-image digest remains unknown."
+    ],
+    "count_interpretation": "Five observed launch API entries and five observed Metal dispatch entries agree with five runtime GPU-completion records in this bounded smoke run. Entry counts alone do not prove kernel completion or numerical correctness; host assertions passed separately."
+  }
+}
