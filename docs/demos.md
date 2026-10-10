@@ -4,6 +4,25 @@ These demos exercise increasingly demanding CUDA workloads on Apple Silicon.
 Each runnable gate checks numerical or domain-specific output and Apple-GPU
 provenance; process exit alone is not considered evidence of correct execution.
 
+## PhysX on Metal lab
+
+A single-file PHP app launches native patched PhysX simulations through CUDA-M
+and displays the captured transforms in Three.js. Rolling friction, frictionless
+triangle-mesh crossing, and a two-box stack pass all 13 state-component CPU/GPU
+comparisons on M4, with exact Apple-GPU launch provenance. Playback is recorded
+native output, not browser-simulated physics or full PhysX/Isaac Sim support.
+
+After the prerequisite native build in [the lab guide](../demos/physx-lab/README.md):
+
+```bash
+npm --prefix demos/physx-lab ci --ignore-scripts
+bash demos/physx-lab/run.sh
+```
+
+Open <http://127.0.0.1:8766>. Runs and retained logs stay local; the server binds
+only to loopback. The guide includes pinned dependencies, validation rules, and
+the stricter mesh-friction velocity mismatch that is excluded from the viewer.
+
 ## Apollo demo
 
 Apollo is the front door: one command climbs from vector addition through

@@ -1,0 +1,115 @@
+{
+  "date_local": "2026-10-09",
+  "device": "Apple M4",
+  "scope": "Bounded patched PhysX 5.6.1 source port through CUDA-M; recorded native state playback in a local PHP/Three.js viewer, not full PhysX or Isaac Sim.",
+  "physx_commit": "5ca9f472105a90d70d957c243cb0ef36fe251a9f",
+  "artifact_sha256": {
+    "runtime": "25dc16129a6791b18a7cab8636ea2e7b5c5345ca0c0085379afd8bf6d826fe52",
+    "executable": "aae22b6e6aac22f98e2e3195e8736238574e3b2daf22db0e2d85513cdc7370b8"
+  },
+  "comparison": {
+    "components": ["px", "py", "pz", "qx", "qy", "qz", "qw", "vx", "vy", "vz", "wx", "wy", "wz"],
+    "absolute_tolerance": 0.00001,
+    "relative_scale": "max(abs(CPU), 1)",
+    "coverage": "Every component, body and frame, including initial state",
+    "max_scaled_error_pass_limit": 1,
+    "gpu_provenance": "Every kernel launch must be successful, exact, metallib-backed and on the same named Apple GPU; scene-specific kernels are required."
+  },
+  "scenes": [
+    {
+      "scene": "rolling",
+      "capture": "20261010-015154-13fb1be3",
+      "steps": 240,
+      "frames": 241,
+      "bodies": 1,
+      "relative_tolerance": 0.001,
+      "gpu_launches": 9124,
+      "frictionless_control_launches": 9124,
+      "max_position_error_m": 0.0018892000000008125,
+      "max_scaled_error": 0.32661086074061246,
+      "passed": true
+    },
+    {
+      "scene": "mesh",
+      "capture": "20261010-014900-8887a3f0",
+      "steps": 30,
+      "frames": 31,
+      "bodies": 1,
+      "friction": false,
+      "relative_tolerance": 0.001,
+      "gpu_launches": 1295,
+      "max_position_error_m": 0,
+      "max_scaled_error": 0,
+      "passed": true
+    },
+    {
+      "scene": "boxes",
+      "capture": "20261010-014902-007357f1",
+      "steps": 30,
+      "frames": 31,
+      "bodies": 2,
+      "friction": false,
+      "relative_tolerance": 0.02,
+      "gpu_launches": 1565,
+      "max_position_error_m": 0.00021821460098317248,
+      "max_scaled_error": 0.8747020249875063,
+      "passed": true
+    }
+  ],
+  "excluded_experiment": {
+    "scene": "60-step sphere on triangle mesh with friction",
+    "capture": "20261010-014610-848ffce7",
+    "first_failure": {"step": 22, "body": 0, "field": "wz", "cpu": -3.46710563, "gpu": -3.48417735},
+    "relative_tolerance": 0.003,
+    "absolute_tolerance": 0.00001,
+    "status": "Open compatibility gap; excluded without widening tolerance."
+  },
+  "browser_verification": {
+    "tool": "Existing bundled Playwright 1.62.1 and Chromium 1234",
+    "desktop": {"width": 1440, "height": 960, "green_body_pixels": 2398, "gold_body_pixels": 2983},
+    "mobile": {"width": 390, "height": 844, "green_body_pixels": 908, "gold_body_pixels": 688},
+    "rolling_canvas_pixels_changed_between_frames_0_and_180": 16929,
+    "document_mode": "CSS1Compat",
+    "local_assets_http_200": 4,
+    "javascript_errors": 0,
+    "request_failures": 0,
+    "horizontal_overflow": false,
+    "checked": ["all three native scene runs", "play and pause", "scrubbing", "replay", "speed", "CPU reference overlay", "grid toggle", "orbit and zoom", "camera reset", "HTTP failure recovery"]
+  },
+  "local_tests": {
+    "php_tests_passed": 33,
+    "php_tests_failed": 0,
+    "php_lint": "passed",
+    "shell_syntax": "passed",
+    "documentation_consistency_ctest": "passed",
+    "post_hardening_http_native_runs": {
+      "mesh": "20261010-015341-eb70c401",
+      "boxes": "20261010-015342-5025cd10",
+      "rolling": "20261010-015343-6100fd65",
+      "result": "All three passed again after persistence hardening; launch counts and numerical metrics match the captures above."
+    },
+    "full_ctest": "Not repeated for this viewer-only change; no compiler or runtime code changed."
+  },
+  "http_failure_checks": {
+    "count": 11,
+    "passed": true,
+    "cases": ["GET run", "missing token", "foreign host", "foreign origin", "malformed JSON", "scalar JSON", "unknown scene", "extra field", "oversized body", "unknown action", "direct output file access"]
+  },
+  "dependency_check": {
+    "date_local": "2026-10-09",
+    "three": "0.186.1",
+    "lucide": "1.54.0",
+    "osv_exact_version_advisories": 0,
+    "npm_audit_advisories": 0,
+    "verified_registry_signatures": 2,
+    "note": "Dated known-advisory checks, not a security guarantee; no install lifecycle scripts executed."
+  },
+  "limits": [
+    "ABP broadphase and orchestration remain on CPU.",
+    "Native device-address mode and per-launch synchronization are required.",
+    "Trace labels alone do not prove numerical correctness; separate CPU state checks are enforced.",
+    "Capture runtimes include CPU/control runs, logging and validation and are not GPU benchmarks.",
+    "PBD cloth is excluded because documented spring constraints are ineffective.",
+    "Raw captures and screenshots remain under ignored demos/physx-lab/out; this summary is the portable evidence."
+  ]
+}

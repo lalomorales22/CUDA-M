@@ -102,6 +102,25 @@ Execution works at the tested settings; usable video quality remains unverified.
 See the [M4 verification notes](local/verification/2026-10-09/VALIDATION.md)
 and [portable Cosmos snapshot](local/verification/2026-10-09/cosmos-summary.json).
 
+## PhysX on Metal
+
+The [local PhysX lab](demos/physx-lab/README.md) runs three bounded, patched-source
+PhysX scenes on the Apple GPU and displays their captured motion in a single-file
+PHP/Three.js app. Each run compares every position, orientation, and velocity
+against native CPU results and verifies completed Metal kernel launches.
+
+After building the patched PhysX runtime as described in the lab guide:
+
+```bash
+npm --prefix demos/physx-lab ci --ignore-scripts
+bash demos/physx-lab/run.sh
+```
+
+Open <http://127.0.0.1:8766>. Rolling friction, frictionless mesh crossing, and a
+two-box stack pass on M4. This is a bounded source port with recorded playback,
+not stock binary compatibility or Isaac Sim. See the
+[NVIDIA workload ledger](docs/nvidia-workloads.md) for remaining limits.
+
 ## How it runs
 
 ```mermaid

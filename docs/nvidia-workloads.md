@@ -51,6 +51,20 @@ The PBD gate checks selected physical invariants; it is not a full CPU/GPU
 parity test for every cloth/particle feature. No gate was waived or modified.
 Portable evidence is in [the PhysX snapshot](../local/verification/2026-10-09/physx-summary.json).
 
+The [PhysX on Metal lab](../demos/physx-lab/README.md) adds a local interactive
+viewer and stricter all-13-component comparisons for rolling friction (240
+steps), frictionless mesh crossing (30), and a two-box stack (30). All three
+pass on M4 with verified Metal dispatches. The browser renders actual captured
+poses; each new run executes the native CPU and GPU programs. Host orchestration
+and ABP broadphase remain on CPU. See the
+[lab verification snapshot](../local/verification/2026-10-09/physx-lab-summary.json).
+
+A 60-step mesh-friction experiment fails this stricter comparison at step 22
+in angular velocity `wz`, despite the existing pose/final-invariant gate passing.
+That case is excluded without widening its relative `3e-3` / absolute `1e-5`
+tolerance. PBD cloth is also excluded because its existing documented spring
+constraints are ineffective. These are compatibility gaps, not working demos.
+
 ```bash
 GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch 107.3-physx-5.6.1 \
   https://github.com/NVIDIA-Omniverse/PhysX.git local/out/PhysX

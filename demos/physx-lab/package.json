@@ -1,0 +1,10 @@
+{
+  "name": "cuda-m-physx-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local viewer for validated native PhysX captures",
+  "dependencies": {
+    "three": "0.186.1",
+    "lucide": "1.54.0"
+  }
+}

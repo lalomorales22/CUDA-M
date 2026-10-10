@@ -13,6 +13,14 @@ The [NVIDIA workload ledger](nvidia-workloads.md) separates source-level PhysX
 testing from native Omniverse/Isaac Sim compatibility. CUDA translation does
 not supply their OS ABI or NVIDIA RTX renderer.
 
+The [PhysX lab](../demos/physx-lab/README.md) adds all-13-component CPU/GPU
+comparisons to three bounded scenes. A separate 60-step mesh-friction capture
+fails angular-velocity (`wz`) parity at step 22 on M4 (relative `3e-3`, absolute
+`1e-5`, scaling by `max(abs(CPU), 1)`). The older mesh gate checks poses and
+final friction invariants, not every intermediate velocity. The lab uses a
+passing 30-step frictionless mesh case instead; mesh-friction velocity parity
+remains open. No compiler/runtime fix or tolerance relaxation is claimed.
+
 ## Gap groups
 
 - [Platform and legal boundaries](known-gaps/platform.md)
