@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-09",
+  "device": "Apple M4",
+  "model": "nvidia/Cosmos-Predict2-2B-Video2World",
+  "revision": "f50c09f5d8ab133a90cac3f4886a6471e9ba3f18",
+  "seed": 20261009,
+  "frames": 9,
+  "size": [320, 192],
+  "steps": 8,
+  "dtype": "bfloat16",
+  "cpu_arithmetic_fallback": false,
+  "safety_checks_retained": true,
+  "other_model_math": "PyTorch MPS with sequential CPU weight staging",
+  "cpu_reference_scope": "16 sampled attention calls and separate reduced transformer; not full pretrained CPU inference",
+  "baseline": {
+    "mps_elapsed_seconds": 79.8172925,
+    "cumetal_elapsed_seconds": 313.3711767,
+    "cumetal_attention_calls": 896,
+    "verified_apple_gpu_launches": 2688,
+    "sample_count": 16,
+    "max_attention_relative_rms_vs_cpu_rounded_bf16": 0.00015143486962188035,
+    "max_attention_relative_rms_vs_mps": 0.00014259155432228,
+    "latent_relative_rms_after_first_step": 0.0025896388106048107,
+    "latent_relative_rms_after_last_step": 0.3155956566333771,
+    "mean_abs_decoded_rgb_difference_0_255": 17.13813591003418,
+    "visual_quality": "both severely distorted; execution only",
+    "full_model_parity": "not qualified"
+  },
+  "experimental_sampler": {
+    "backend": "native MPS attention",
+    "adapter": "denoised prediction to Euler derivative",
+    "final_latent_rms": 119.894,
+    "assessment": "worse output; rejected as a fix; normal runner unchanged"
+  },
+  "download_free_diagnostic_tests_passed": 7,
+  "smoke_attention_calls": 13,
+  "smoke_apple_gpu_launches": 39,
+  "local_evidence": [
+    "local/out/cosmos-diagnostic/comparison.json",
+    "local/out/cosmos-diagnostic/comparison.png",
+    "local/out/cosmos-diagnostic/mps.mp4",
+    "local/out/cosmos-diagnostic/cumetal.mp4",
+    "local/out/cosmos-sampler-diagnostic/comparison.json"
+  ]
+}

@@ -29,6 +29,49 @@ The cause is not isolated; low test settings and backend parity still need
 controlled comparison. Evidence and output are in `local/out/cosmos-video-results.json`,
 `local/out/cosmos-video.mp4`, and `local/out/cosmos-video-contact-sheet.png`.
 
+### Same-seed diagnostic
+
+A follow-up holds the checkpoint revision, image, prompt, seed, BF16 dtype,
+nine frames, 320x192 size, and eight steps fixed. Native MPS attention and
+CuMetal attention both complete, with other model math on MPS and no automatic
+CPU arithmetic fallback. The CuMetal run executes 896 calls / 2,688 verified
+Apple-GPU launches. Native MPS takes 79.82 seconds; CuMetal takes 313.37 seconds
+including sampled audits. These are local timings, not a controlled benchmark.
+
+Both videos show severe distortion after the conditioning frame. On 16 sampled
+self/cross attention calls, maximum relative RMS error against the CPU FP32
+reference rounded to BF16 is `0.000151435` (0.0152%). Against native MPS it is
+`0.000142592` (0.0143%). Those samples do not qualify every layer or full-model
+parity: latent relative RMS differences grow from `0.00259` after step one to
+`0.31560` at the end. Mean decoded RGB difference is 17.14 on the 0-255 scale.
+
+This isolates a visual failure that also occurs without CuMetal attention;
+it does not prove all CuMetal arithmetic correct or establish full-model parity.
+Full pretrained CPU inference was not attempted. CPU references cover sampled
+attention and the separate reduced random-weight transformer test.
+
+An explicit experimental denoised-prediction-to-Euler-derivative adapter was
+tested on MPS. It worsens the video and drives the final latent RMS to 119.894,
+so **it is rejected as a fix** and is not enabled in the normal video runner.
+The installed pipeline matches the official Diffusers v0.41.0 source. Next
+quality investigations should check trained dimensions/frame counts, step count,
+precision, and the model/pipeline contract rather than infer a generic CUDA gap.
+See the [portable diagnostic snapshot](../local/verification/2026-10-09/cosmos-diagnostic-summary.json).
+
+```bash
+./cuda-mac cosmos-test
+local/out/cosmos-venv/bin/python local/test_cosmos_diagnostic.py
+local/out/cosmos-venv/bin/python local/diagnose_cosmos_video.py --image /absolute/path/input.png
+local/out/cosmos-venv/bin/python local/diagnose_cosmos_video.py --summarize-only
+```
+
+The diagnostic uses cached pretrained weights (`local_files_only=True`) and
+retains the safety checker. Outputs, step latents, samples, and the comparison
+sheet stay in ignored `local/out/cosmos-diagnostic/`; previous video evidence
+is preserved. Seven download-free tests check metrics, unsigned frame arithmetic,
+dispatch restoration, the experimental adapter's analytic step, and zero-sigma
+refusal. The adapter is available only as an explicitly selected experiment.
+
 ## Implementation limits
 
 `local/cosmos_cumetal.py` stages PyTorch tensors through CPU memory to the CUDA
