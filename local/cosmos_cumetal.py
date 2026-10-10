@@ -25,7 +25,30 @@ class CuMetalAttention:
         if not self.binary.is_file():
             raise RuntimeError("build local/cosmos_attention.cu with ./cuda-mac compile first")
         self.launches = []
+        self.completion_receipts = []
         self.calls = 0
+
+    def _check_dimensions(self, batch, heads, queries, keys, width, value_width):
+        if (batch * heads > 128 or max(queries, keys) > 4096 or
+                max(width, value_width) > 128 or batch * heads * queries * keys > 67108864):
+            raise NotImplementedError("attention exceeds the worker's bounded dimensions")
+
+    def _validate_trace(self, trace, dimensions):
+        launches = []
+        for line in trace.splitlines():
+            if line.startswith("CUMETAL_PROVENANCE "):
+                event = dict(token.split("=", 1) for token in shlex.split(line)[1:] if "=" in token)
+                if event.get("event") == "kernel_launch":
+                    launches.append(event)
+        for name in ("cosmos_scores", "cosmos_softmax", "cosmos_values"):
+            matching = [e for e in launches if name in e.get("kernel", "")]
+            if len(matching) != 1:
+                raise RuntimeError("missing or duplicate Apple-GPU launch: " + name)
+        if len(launches) != 3 or any(e.get("device") != "apple_gpu" or
+                e.get("launch_success") != "true" or e.get("semantic_quality") != "exact" or
+                not e.get("device_name", "").startswith("Apple ") for e in launches):
+            raise RuntimeError("worker did not provide exact, completed Apple-GPU provenance")
+        return launches, []
 
     def __call__(self, query, key, value, attn_mask=None, dropout_p=0.0,
                  is_causal=False, scale=None, enable_gqa=False):
@@ -48,9 +71,8 @@ class CuMetalAttention:
             raise ValueError("incompatible query, key, and value shapes")
         if min(batch, heads, queries, keys, width, value_width) <= 0:
             raise ValueError("empty attention dimensions are unsupported")
-        if (batch * heads > 128 or max(queries, keys) > 4096 or
-                max(width, value_width) > 128 or batch * heads * queries * keys > 67108864):
-            raise NotImplementedError("attention exceeds the worker's bounded dimensions")
+        dimensions = (batch, heads, queries, keys, width, value_width)
+        self._check_dimensions(*dimensions)
         factor = float(scale) if scale is not None else width ** -0.5
         if not math.isfinite(factor):
             raise ValueError("scale must be finite")
@@ -68,20 +90,7 @@ class CuMetalAttention:
         trace = result.stderr.decode(errors="replace")
         if result.returncode:
             raise RuntimeError("CuMetal worker failed: " + trace)
-        launches = []
-        for line in trace.splitlines():
-            if line.startswith("CUMETAL_PROVENANCE "):
-                event = dict(token.split("=", 1) for token in shlex.split(line)[1:] if "=" in token)
-                if event.get("event") == "kernel_launch":
-                    launches.append(event)
-        for name in ("cosmos_scores", "cosmos_softmax", "cosmos_values"):
-            matching = [e for e in launches if name in e.get("kernel", "")]
-            if len(matching) != 1:
-                raise RuntimeError("missing or duplicate Apple-GPU launch: " + name)
-        if len(launches) != 3 or any(e.get("device") != "apple_gpu" or
-                e.get("launch_success") != "true" or e.get("semantic_quality") != "exact" or
-                not e.get("device_name", "").startswith("Apple ") for e in launches):
-            raise RuntimeError("worker did not provide exact, completed Apple-GPU provenance")
+        launches, receipts = self._validate_trace(trace, dimensions)
         expected_bytes = batch * heads * queries * value_width * 4
         if len(result.stdout) != expected_bytes:
             raise RuntimeError("worker output size mismatch")
@@ -90,6 +99,7 @@ class CuMetalAttention:
             raise RuntimeError("worker returned non-finite output")
         self.calls += 1
         self.launches.extend(launches)
+        self.completion_receipts.extend(receipts)
         return torch.from_numpy(array).to(device=query.device, dtype=query.dtype)
 
     @contextmanager
@@ -111,7 +121,98 @@ class CuMetalAttention:
             transformer_cosmos.dispatch_attention_fn = original
 
 
-def self_test():
+def blas_attention_plan(batch, heads, queries, keys, width, value_width):
+    """Mirror the experimental tiled worker's allocation and operation limits."""
+    dimensions = (batch, heads, queries, keys, width, value_width)
+    if any(not isinstance(d, int) or isinstance(d, bool) or not 1 <= d <= 16384 for d in dimensions):
+        raise NotImplementedError("BLAS attention dimensions must be integers in 1..16384")
+    head_count = batch * heads
+    if head_count > 128 or max(width, value_width) > 128:
+        raise NotImplementedError("BLAS attention exceeds head/channel bounds")
+    tensor_elements = head_count * (queries + keys) * (width + value_width)
+    multiply_accumulates = head_count * queries * keys * (width + value_width)
+    if tensor_elements > 134217728 or multiply_accumulates > 549755813888:
+        raise NotImplementedError("BLAS attention exceeds bounded memory or operation budget")
+    tile = min(queries, 256, 67108864 // (head_count * keys))
+    if tile < 1:
+        raise NotImplementedError("BLAS attention exceeds score workspace")
+    return {"tile_queries": tile, "tiles": (queries + tile - 1) // tile,
+            "workspace_elements": head_count * tile * keys, "tensor_elements": tensor_elements,
+            "multiply_accumulates": multiply_accumulates}
+
+
+def _strict_trace_record(line):
+    try:
+        fields = {}
+        for token in shlex.split(line)[1:]:
+            key, value = token.split("=", 1)
+            if not key or key in fields:
+                raise ValueError("empty or duplicate field")
+            fields[key] = value
+        return fields
+    except ValueError as error:
+        raise RuntimeError("malformed worker evidence: " + str(error)) from error
+
+
+class CuMetalBlasAttention(CuMetalAttention):
+    """Experimental tiled cuBLAS/MPS GEMMs plus CUDA-M softmax.
+
+    ``launches`` contains actual softmax runtime kernel records only.
+    ``completion_receipts`` contains separate application-level assertions that
+    synchronous cuBLAS calls completed. These are NOT GEMM kernel provenance.
+    """
+
+    def __init__(self, binary=None):
+        path = Path(binary or OUT / "cosmos-attention-blas")
+        if not path.is_file():
+            raise RuntimeError("build local/cosmos_attention_blas.cu with ./cuda-mac compile first")
+        super().__init__(path)
+
+    def _check_dimensions(self, *dimensions):
+        blas_attention_plan(*dimensions)
+
+    def _validate_trace(self, trace, dimensions):
+        plan = blas_attention_plan(*dimensions)
+        launches, receipts = [], []
+        for line in trace.splitlines():
+            if line.startswith("COSMOS_BLAS_VALIDATION"):
+                raise RuntimeError("validation-only execution is not GPU completion evidence")
+            if line.startswith("CUMETAL_PROVENANCE "):
+                event = _strict_trace_record(line)
+                if event.get("event") == "kernel_launch":
+                    if receipts:
+                        raise RuntimeError("softmax launch appeared after its completion receipt")
+                    launches.append(event)
+            elif line.startswith("COSMOS_BLAS_COMPLETION"):
+                if not line.startswith("COSMOS_BLAS_COMPLETION "):
+                    raise RuntimeError("malformed BLAS completion receipt")
+                receipts.append(_strict_trace_record(line))
+        if len(receipts) != 1:
+            raise RuntimeError("missing or duplicate BLAS application completion receipt")
+        receipt = receipts[0]
+        expected = {"status": "passed", "gemm_backend": "cumetal_cublas_mps",
+                    "softmax_backend": "cumetal_cuda_metal", "tiles": str(plan["tiles"]),
+                    "gemm_calls": str(2 * plan["tiles"]), "tile_queries": str(plan["tile_queries"]),
+                    "workspace_elements": str(plan["workspace_elements"]),
+                    "device_name": receipt.get("device_name", "")}
+        if receipt != expected or not receipt.get("device_name", "").startswith("Apple "):
+            raise RuntimeError("incorrect BLAS application completion receipt")
+        if len(launches) != plan["tiles"]:
+            raise RuntimeError("missing or duplicate tiled softmax GPU launch")
+        batch, heads, queries, _, _, _ = dimensions
+        for index, event in enumerate(launches):
+            count = min(plan["tile_queries"], queries - index * plan["tile_queries"])
+            if (event.get("kernel") not in ("cosmos_blas_softmax", "_Z19cosmos_blas_softmaxPfiiii")
+                    or event.get("device") != "apple_gpu" or event.get("launch_success") != "true"
+                    or event.get("semantic_quality") != "exact"
+                    or event.get("device_name") != receipt["device_name"]
+                    or event.get("grid") != f"({batch * heads * count},1,1)"
+                    or event.get("block") != "(128,1,1)"):
+                raise RuntimeError("incorrect tiled softmax GPU provenance")
+        return launches, receipts
+
+
+def self_test(report_path=None):
     torch.manual_seed(20261009)
     bridge = CuMetalAttention()
     report = {"status": "running", "scope": "attention and reduced random-weight Cosmos transformer; no pretrained inference",
@@ -119,7 +220,8 @@ def self_test():
     report["sha256"] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                         for p in (ROOT / "local/cosmos_attention.cu", Path(__file__),
                                   bridge.binary, ROOT / "build/libcumetal.dylib")}
-    path = OUT / "cosmos-attention-results.json"
+    path = Path(report_path) if report_path is not None else OUT / "cosmos-attention-results.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2) + "\n")
     try:
         for batch, heads, queries, keys, width, value_width, causal, scale in (

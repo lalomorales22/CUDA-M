@@ -68,9 +68,63 @@ local/out/cosmos-venv/bin/python local/diagnose_cosmos_video.py --summarize-only
 The diagnostic uses cached pretrained weights (`local_files_only=True`) and
 retains the safety checker. Outputs, step latents, samples, and the comparison
 sheet stay in ignored `local/out/cosmos-diagnostic/`; previous video evidence
-is preserved. Seven download-free tests check metrics, unsigned frame arithmetic,
+is preserved. The original seven download-free tests check metrics, unsigned frame arithmetic,
 dispatch restoration, the experimental adapter's analytic step, and zero-sigma
 refusal. The adapter is available only as an explicitly selected experiment.
+
+### Recognizable 720p MPS clip
+
+A cached-only native MPS run now produces a recognizable welding scene across
+all nine inspected frames at **1280x704**, eight denoising steps, and unscaled
+temporal rotary positions (`--native-rope`). The clip is 0.5625 seconds at
+16 fps. The scene remains coherent with changing smoke and sparks, but visible
+softness and texture artifacts remain. This is a tiny visual smoke test, not
+production quality or prompt-adherence qualification: the earlier toy-robot
+prompt was deliberately held fixed despite the welding input image.
+
+The run took 555.00 seconds including conditioning, inference, decoding and
+safety checks (561.29 seconds overall). All other model math and attention used
+PyTorch MPS; CPU arithmetic fallback was disabled. **This result contains zero
+CuMetal attention calls and is not proof of CUDA-M pretrained parity.**
+The earlier source-compiled CuMetal video remains distorted at its small size.
+
+Separate 35-step, 320x192 runs remain distorted, both with the original temporal
+positions and with unscaled positions. VAE reconstruction works in BF16 and
+FP32 across nine frames; decoding the earlier bad latents stays distorted in
+both precisions. These observations narrow the problem but do not isolate a
+single cause. See the [quality evidence](../local/verification/2026-10-09/COSMOS-QUALITY.md).
+
+```bash
+local/out/cosmos-venv/bin/python local/diagnose_cosmos_video.py \
+  --backends mps --native-rope --steps 8 --height 704 --width 1280 \
+  --frames 9 --export-fps 16 --image /absolute/path/input.png \
+  --output-dir local/out/cosmos-720p-rerun
+```
+
+The output directory must not already contain a comparison report. This command
+requires the cached model/guardrail environment described below; it downloads
+no weights and retains the safety checker. Its output is `mps.mp4` in that
+directory. It was tested on this 32 GiB M4 only.
+
+`--native-rope` follows NVIDIA Predict2's disabled FPS modulation. The installed
+Diffusers pipeline otherwise passes 16 fps to a rotary embedding based on 24 fps,
+scaling temporal positions by 1.5. This mismatch is also tracked in
+[Diffusers issue 14768](https://github.com/huggingface/diffusers/issues/14768).
+Playback fps is independent of this transformer setting.
+
+Two further flags, `--posterior-mode` and `--native-ab2`, reproduce selected
+parts of NVIDIA's initial-release conditioning/sampler contract. Their analytic
+and synthetic-pipeline tests pass, but no pretrained video quality result is
+claimed for them. AB2 with 36 evaluations means 35 transitions plus a final
+clean prediction; 35 evaluations preserves the earlier 35-evaluation budget.
+Earlier BF16 rounding and FP32-versus-FP64 arithmetic differences remain.
+The older `--denoised-euler` experiment is not compatible with AB2 and remains a
+rejected fix: the installed pipeline already performs that derivative conversion.
+
+The [bounded REA investigation](../local/verification/2026-10-09/COSMOS-REA.md)
+did not produce a new successful Cosmos debugger trace. A separate normal
+execution passed its independent numerical test; it is not a substitute for
+the missing instrumented evidence.
 
 ## Implementation limits
 
@@ -79,17 +133,59 @@ executable in `local/cosmos_attention.cu`. Attention arithmetic runs on the Appl
 GPU through CuMetal. The candidate video runner uses MPS for other model math.
 This is an explicit bridge, not a replacement for PyTorch's CUDA device backend.
 
-The inference-only worker starts a process per call and materializes scores.
+The original inference-only worker starts a process per call and materializes scores.
 It is not performance-tuned. Batch * heads is bounded to 128, sequences to 4096,
-channel widths to 128, and scores to 64 million FP32 values. Explicit masks,
+channel widths to 128, and scores to 64 Mi FP32 values. Explicit masks,
 dropout, GQA, and backward are refused. The scoped Cosmos dispatch replacement
 must not run concurrently with other inference in the same Python process.
+
+### Experimental tiled attention
+
+`local/cosmos_attention_blas.cu` adds a separate source-compiled worker for this
+named workload. Query tiles use the existing clean-room cuBLAS shim for two
+public MPS matrix multiplications and a CUDA-to-Metal row-softmax kernel.
+The original three-kernel dense worker remains available and unchanged.
+
+Standalone attention at `[batch, heads, queries, keys, D, Dv] =
+[1, 16, 10560, 10560, 128, 128]` passes against a bounded, query-tiled native
+MPS FP32 reference covering every key and query. Maximum absolute difference
+is `5.44e-7`, relative RMS `2.10e-6`. The score workspace is 165 MiB versus
+6.65 GiB for a full score matrix, a size the original worker refuses.
+A local invocation took 2.12 seconds; this includes
+process/staging work and is not a full-model benchmark. Ten additional GPU
+shapes and an intermediate-overflow rejection pass, alongside 24 CPU-only
+protocol cases.
+
+The large test records 42 completed softmax kernel launches and 84 synchronous
+cuBLAS calls. **Only softmax has runtime GPU kernel provenance.** GEMM completion
+is an application-level receipt backed by the current cuBLAS-to-MPS source path,
+not an instrumented GEMM launch trace. The explicit `cumetal-blas` diagnostic
+backend checks both evidence types separately. This does not qualify a full
+pretrained video at this size or the default 93-frame model geometry.
+
+```bash
+./cuda-mac compile local/cosmos_attention_blas.cu -o local/out/cosmos-attention-blas
+local/out/cosmos-venv/bin/python local/test_cosmos_attention_blas.py --gpu --cosmos-shape
+local/out/cosmos-venv/bin/python local/verify_cosmos_blas_bridge.py
+```
+
+See [worker evidence and limits](../local/verification/2026-10-09/COSMOS-BLAS.md).
+The [bridge qualification](../local/verification/2026-10-09/cosmos-blas-bridge-summary.json)
+also passes FP32/FP16/BF16 CPU/MPS staging, causal/custom-scale attention, and
+a reduced random-weight Cosmos transformer on CPU and MPS. Its 11 attention
+calls produce 18 softmax runtime launch records and receipts for 36 GEMMs;
+the MPS transformer differs from native MPS by at most `2.38e-7`.
+No compiler/runtime change or new library shim is involved. Masks, dropout,
+GQA, and backward remain unsupported; operation, tensor and workspace budgets
+are checked before execution. The Python bridge still stages through host
+memory and starts one subprocess per attention call.
 
 The pretrained target is `nvidia/Cosmos-Predict2-2B-Video2World`. Local login
 and target/guardrail access succeed; roughly 14 GB of primary weights downloaded.
 The full small-test pipeline, guardrail checks, and video export ran successfully.
-Production-size MPS coverage, peak memory usage, performance tuning, and usable
-visual quality remain unverified. Safety checks are not bypassed.
+The follow-up above produces a recognizable, very short 720p MPS clip. Longer
+clips, production quality, peak memory usage, performance tuning, and pretrained
+CuMetal parity at that size remain unverified. Safety checks are not bypassed.
 
 Local guardrail portability fixes stage CUDA-tagged RetinaFace weights on CPU
 with `weights_only=True` and strict state-dict validation, expose the checker's

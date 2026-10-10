@@ -8,7 +8,7 @@ NVIDIA binary or product compatibility.
 
 | Workload | Current boundary |
 | --- | --- |
-| Cosmos Predict2 | Bounded attention bridge and reduced transformer checks pass. Pretrained nine-frame execution completes, but footage is severely distorted; usable-video quality is not qualified. |
+| Cosmos Predict2 | Source-compiled attention and reduced transformer checks pass; the small CuMetal pretrained video is distorted. Native MPS now produces a recognizable 1280x704 nine-frame clip, with softness/artifacts. Longer video and full-model CuMetal parity remain open. |
 | PhysX 5.6.1 | All seven existing patched-source conformance gates pass on M4. Results apply only to the selected port, not the whole SDK or Isaac Sim. |
 | Omniverse Kit | Native macOS Apple-GPU execution is not supported by upstream requirements and has not been demonstrated here. |
 | Isaac Sim | Native macOS execution is not supported by upstream requirements and has not been demonstrated here. |

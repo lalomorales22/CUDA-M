@@ -98,9 +98,15 @@ An [experimental Cosmos attention integration](docs/cosmos-feasibility.md)
 passes 13 attention calls / 39 Apple-GPU launches on M4, including a reduced
 random-weight Cosmos transformer. A pretrained nine-frame video test completed
 with 2,688 Apple-GPU kernel launches, but its generated frames are badly distorted.
-Execution works at the tested settings; usable video quality remains unverified.
+Execution works at those settings. A follow-up native-MPS run at 1280x704
+produces a recognizable nine-frame welding clip, with remaining softness and
+texture artifacts. It uses no CuMetal attention; full-model CUDA-M parity and
+longer, production-quality video remain unverified.
 See the [M4 verification notes](local/verification/2026-10-09/VALIDATION.md)
-and [portable Cosmos snapshot](local/verification/2026-10-09/cosmos-summary.json).
+and [Cosmos quality evidence](local/verification/2026-10-09/COSMOS-QUALITY.md).
+An [experimental tiled attention worker](local/verification/2026-10-09/COSMOS-BLAS.md)
+also passes the 10,560-token geometry needed by that clip using existing cuBLAS/MPS
+calls and source-compiled CUDA softmax, without allocating the full score matrix.
 
 ## PhysX on Metal
 

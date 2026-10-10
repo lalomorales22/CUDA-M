@@ -6,8 +6,10 @@ current status must be backed by tests and evidence.
 The [local Cosmos experiment](cosmos-feasibility.md) validates bounded SDPA
 and a reduced random-weight Cosmos transformer through an explicit PyTorch
 bridge. It does not implement PyTorch's CUDA backend. A small pretrained video
-execution completed, but generated frames are severely distorted. Usable visual
-quality, production-size coverage, and full-model backend parity remain open.
+execution completed, but generated frames are severely distorted. A separate
+1280x704 native-MPS run produces a recognizable nine-frame clip with softness
+and texture artifacts; it contains no CuMetal attention calls. Longer video,
+production quality, and full-model backend parity remain open.
 
 The [NVIDIA workload ledger](nvidia-workloads.md) separates source-level PhysX
 testing from native Omniverse/Isaac Sim compatibility. CUDA translation does

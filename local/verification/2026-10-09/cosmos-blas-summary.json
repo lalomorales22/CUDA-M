@@ -1,0 +1,43 @@
+{
+  "status": "passed",
+  "scope": "Experimental tiled SDPA worker and standalone 720p/9-frame attention geometry; not completed pretrained Cosmos inference.",
+  "device": "Apple M4",
+  "build_command": "./cuda-mac compile local/cosmos_attention_blas.cu -o local/out/cosmos-attention-blas",
+  "test_command": "local/out/cosmos-venv/bin/python local/test_cosmos_attention_blas.py --gpu --cosmos-shape",
+  "full_local_report": "local/out/cosmos-attention-blas-results.json",
+  "sha256": {
+    "local/test_cosmos_attention_blas.py": "1316a3ff4bcedf991422a76ebde3cbffd4123bfba1794f013c8d58fe003177c9",
+    "local/cosmos_attention_blas.cu": "71cc251df9d956d0eb95af0b8ba495a580911bc37eefefdb1729a2dd0d996f2e",
+    "local/out/cosmos-attention-blas": "f4b51d533a5191e9de4e8a14f8d23528a2aeaf2e6ad29f94a18cc65499f76ae0",
+    "build/libcumetal.dylib": "25dc16129a6791b18a7cab8636ea2e7b5c5345ca0c0085379afd8bf6d826fe52"
+  },
+  "cpu_protocol_cases": 24,
+  "small_gpu_numerical_cases": 10,
+  "small_gpu_max_absolute_error": 0.0000020265579223632812,
+  "negative_gpu_cases": ["finite-input-intermediate-overflow-rejected"],
+  "target": {
+    "shape_B_H_Q_K_D_Dv": [1, 16, 10560, 10560, 128, 128],
+    "dtype": "float32",
+    "causal": false,
+    "reference": "Native MPS SDPA, 256-query tiles preserving all 10560 keys; no dense CPU score matrix.",
+    "max_absolute_error": 5.438923835754395e-7,
+    "relative_rms_error": 0.0000020967063392163254,
+    "worker_seconds": 2.116924125002697,
+    "reference_seconds": 0.8339954170078272,
+    "score_workspace_bytes": 173015040,
+    "reference_peak_observed_mps_driver_bytes": 1082621952,
+    "child_process_peak_rss_bytes": 636485632,
+    "child_rss_scope": "RUSAGE_CHILDREN high-water mark across all harness child processes, not isolated target-worker RSS or GPU memory.",
+    "traced_completed_softmax_launches": 42,
+    "application_reported_completed_cublas_mps_calls": 84,
+    "query_tile_size": 256,
+    "workspace_elements": 43253760
+  },
+  "backend_boundary": "QK and SV call CUDA-M clean-room cublasSgemmStridedBatched, whose existing backend uses public MPSMatrixMultiplication. Softmax is CUDA source compiled to Metal and carries runtime launch provenance. The GEMM counts are application receipts after synchronous API completion, not independent runtime kernel traces.",
+  "limitations": [
+    "No backward, masks, dropout, grouped-query attention, or general unbounded workloads.",
+    "FP32 worker; other input dtypes require explicit bridge staging.",
+    "This is one target attention call, not a pretrained Cosmos output-quality or Omniverse compatibility claim.",
+    "Timing is a local single run, not a stable performance benchmark."
+  ]
+}

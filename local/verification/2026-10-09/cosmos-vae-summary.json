@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-09",
+  "model": "nvidia/Cosmos-Predict2-2B-Video2World",
+  "revision": "f50c09f5d8ab133a90cac3f4886a6471e9ba3f18",
+  "component": "AutoencoderKLWan",
+  "device": "PyTorch MPS on Apple M4",
+  "frames": 9,
+  "size": [320, 192],
+  "cpu_arithmetic_fallback": false,
+  "scope": "VAE diagnostic only; no transformer or safety-qualified generated video",
+  "reconstruction_posterior": "mode; no sampling noise",
+  "retained_latents": "native MPS eight-step baseline; final normalized step_7 array",
+  "metrics_domain": "decoded float32 RGB in [-1,1]; PSNR uses peak-to-peak range 2",
+  "bf16": {
+    "elapsed_seconds": 8.037364792005974,
+    "reconstruction_max_frame_rmse": 0.037951774143012235,
+    "reconstruction_min_frame_psnr_db": 34.435958257260644,
+    "all_reconstruction_and_retained_decode_frames_finite": true,
+    "visual_assessment": "repeated input faithfully reconstructed across nine frames; retained generated latents remain severely distorted after conditioning frame"
+  },
+  "fp32": {
+    "elapsed_seconds": 12.275031249999302,
+    "reconstruction_max_frame_rmse": 0.03785058504009785,
+    "reconstruction_min_frame_psnr_db": 34.45914798148642,
+    "all_reconstruction_and_retained_decode_frames_finite": true,
+    "visual_assessment": "repeated input faithfully reconstructed across nine frames; retained generated latents remain severely distorted after conditioning frame"
+  },
+  "bf16_vs_fp32": {
+    "reconstruction_max_frame_rmse": 0.0027621004670158396,
+    "reconstruction_min_frame_psnr_db": 57.19581048724667,
+    "retained_decode_max_frame_rmse": 0.004876511762865889,
+    "retained_decode_min_frame_psnr_db": 52.258414390570806,
+    "retained_decode_max_abs": 0.10428008437156677
+  },
+  "total_elapsed_seconds": 23.60927079200337,
+  "cpu_only_tests_passed": 7,
+  "inference": "gross temporal reconstruction or decode-precision failure is unlikely to explain this sample; severe distortion persists in the retained generated latents under both decoder precisions",
+  "limits": [
+    "one conditioning image, nine frames, and 320x192 only",
+    "no full CPU VAE decode or full pretrained CPU inference comparison",
+    "no CuMetal attention execution in this VAE-only diagnostic",
+    "does not establish correctness of every MPS operation or all model settings",
+    "diagnostic images are not safety-qualified generated video output"
+  ],
+  "sha256": {
+    "local/diagnose_cosmos_vae.py": "0ef775d4693258e331993a75ea261b0b4cf02d66f7f181f4277ae9e20d3e53e4",
+    "local/test_cosmos_vae.py": "705e7004221a6b334eb9c93a39d1c19f6e0dcd3b4727c5cd2de357da81fc8ef3",
+    "local/out/robot-welding-input.jpg": "2ea751817db2fd8da9ca7d2041414c85f191ab5d0cd38a5c9a14d74c53362766",
+    "local/out/cosmos-diagnostic/mps-latents.npz": "f3a1ffa35e3697492ce5781c1a547c470571f922893c2562bc6d2c2b9516b6e0",
+    "local/out/cosmos-vae-diagnostic/results.json": "d8f4b2c9c3af51eca2b640e040a5495ccc065968a519cc7d31d90b4265915702",
+    "local/out/cosmos-vae-diagnostic/comparison.png": "ef0dda2a1eadbb7d5ea4279311b73c8c17b0c6e1915906a237786eec4abd8793"
+  },
+  "local_artifacts": [
+    "local/out/cosmos-vae-diagnostic/results.json",
+    "local/out/cosmos-vae-diagnostic/comparison.png",
+    "local/out/cosmos-vae-diagnostic/bf16-reconstruction.npy",
+    "local/out/cosmos-vae-diagnostic/fp32-reconstruction.npy",
+    "local/out/cosmos-vae-diagnostic/bf16-retained-decode.npy",
+    "local/out/cosmos-vae-diagnostic/fp32-retained-decode.npy"
+  ]
+}

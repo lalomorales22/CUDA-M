@@ -1,0 +1,71 @@
+{
+  "date_local": "2026-10-09",
+  "scope": "One deterministic, non-causal FP32 Cosmos attention worker request; no pretrained video inference",
+  "status": "native_numerics_passed_debugger_trace_unresolved",
+  "artifact_sha256_before_and_after": {
+    "local/out/cosmos-attention": "94819637b510089e9d39fbb0aa18d7dbbcffd48e591e1e62220878c584dde2ca",
+    "build/libcumetal.dylib": "25dc16129a6791b18a7cab8636ea2e7b5c5345ca0c0085379afd8bf6d826fe52",
+    "local/out/rea-cosmos-2026-10-09/launch_attention": "43d63b088e7bb66a94e0a2f689d014b84021597206976b9eebb7ebf63a9f82e4"
+  },
+  "input": {
+    "shape_B_H_Q_K_D_Dv": [1, 2, 17, 23, 32, 16],
+    "bytes": 13220,
+    "sha256": "88c46c7e60590c9fbcefdd733048b78d783a2afbab830fc46db8b2bc4b7a5f7b",
+    "fixture": "local/out/rea-cosmos-2026-10-09/input.bin"
+  },
+  "rea": {
+    "version": "6.3.0",
+    "evidence_id": "ev_7f7945eaa2cbbd3a87f7d564dd43827f57a492ced3d68c4169e175eb769df360",
+    "bundle": "local/out/rea-cosmos-2026-10-09/rea-failed-harness.bundle.json",
+    "selected_target": "local/out/rea-cosmos-2026-10-09/launch_attention",
+    "launch_scope": "Owned launcher opens fixed input/output paths then execs the unchanged attention worker; neither main nor exec was observed in the failed trace",
+    "breakpoints": ["cudaLaunchKernel in libcumetal.dylib", "dispatchThreadgroups:threadsPerThreadgroup:"],
+    "duration_ms": 30000,
+    "elapsed_ms": 30926.637,
+    "outcome": "duration-elapsed",
+    "exit_status": null,
+    "terminated": true,
+    "events": 0,
+    "unresolved_breakpoints": [0, 1],
+    "coverage": "partial",
+    "other_stops": ["signal SIGSTOP"],
+    "stdout_bytes": 0,
+    "stderr_bytes": 0,
+    "output_file_created": false,
+    "session_closed": true,
+    "is_positive_cuda_or_metal_execution_evidence": false
+  },
+  "direct_lldb_diagnostic": {
+    "reason": "Determine whether the stall is REA-specific or before the harness exec boundary",
+    "target": "local/out/rea-cosmos-2026-10-09/launch_attention",
+    "result": "No output file or worker call observed; after terminating the owned target, LLDB reported dyld::__open + 8. A loader stall before main is an inference, not a captured main breakpoint.",
+    "cleanup": "Owned target PID 22635 killed; LLDB 22632 and debugserver 22637 subsequently absent",
+    "root_cause": "unresolved; no new authorization prompt established and no OS security setting changed"
+  },
+  "uninstrumented_native_run": {
+    "exit_status": 0,
+    "device_name": "Apple M4",
+    "completed_gpu_launches": 3,
+    "kernels": ["cosmos_scores", "cosmos_softmax", "cosmos_values"],
+    "launch_success": true,
+    "semantic_quality": "exact",
+    "source": "generic_nvvm",
+    "transcribed_runtime_stderr": "local/out/rea-cosmos-2026-10-09/native-run.log",
+    "cpu_emulation": false,
+    "outputs": 544,
+    "reference": "Independent JavaScript float64 scaled dot-product attention over the same float32 inputs",
+    "max_abs_error": 1.0617974827153986e-7,
+    "max_scaled_error": 0.002440097857568096,
+    "atol": 2e-5,
+    "rtol": 2e-4,
+    "output_sha256": "b436f21d9a06e1fe7cd2e94253f452da9613cf24bcee6e9cd77f00967ce11d93",
+    "numerics": "local/out/rea-cosmos-2026-10-09/numerics.json"
+  },
+  "limitations": [
+    "The new REA attempt contains no observed CUDA or Metal calls and cannot extend the prior smoke call-path evidence to this worker.",
+    "GPU-completion claims here come from CuMetal runtime provenance, independently corroborated by output numerics, not successful debugger breakpoints.",
+    "This tiny attention request does not qualify the pretrained Cosmos video pipeline, video quality, full Cosmos compatibility, Omniverse, or Isaac Sim.",
+    "Hashes bind selected files before and after; exact mapped image digests were not measured.",
+    "This JSON is a derived summary. The ignored REA bundle is the retained canonical failed observation."
+  ]
+}
